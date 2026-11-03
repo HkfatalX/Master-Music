@@ -1,0 +1,20 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "03/11/2026",
+    "title": "Lançamento do Master Music",
+    "added": [
+      "Login e cadastro seguros com Supabase",
+      "Catálogo gratuito e legal do Audius: em alta, gêneros e busca",
+      "Player completo com tocar em segundo plano, fila, aleatório e repetir",
+      "Letras sincronizadas (LRCLIB) e timer para dormir",
+      "Favoritos, playlists e histórico sincronizados na sua conta",
+      "Conexão oficial com o Spotify para ver suas playlists e curtidas",
+      "Avisos de atualização opcionais com o log de novidades"
+    ],
+    "improved": [
+      "Visual escuro moderno com animações e fundo desfocado da capa"
+    ],
+    "fixed": []
+  }
+]
