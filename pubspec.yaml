@@ -1,7 +1,7 @@
 name: master_music
 description: Master Music - player de música moderno, gratuito e seguro.
 publish_to: none
-version: 1.0.3+4
+version: 1.1.0+5
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -26,11 +26,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/logo_mark.png
     - assets/changelog.json
 
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/logo.png
-  adaptive_icon_background: "#4C1D95"
+  adaptive_icon_background: "#06030D"
   adaptive_icon_foreground: assets/logo_fg.png

@@ -4,11 +4,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 
-class SpotifyTrack {
+class ExtTrack {
   final String name;
   final String artist;
   final String? art;
-  const SpotifyTrack(this.name, this.artist, this.art);
+  const ExtTrack(this.name, this.artist, this.art);
 }
 
 class SpotifyPlaylist {
@@ -98,14 +98,14 @@ class SpotifyService {
     return null;
   }
 
-  SpotifyTrack? _track(dynamic t) {
+  ExtTrack? _track(dynamic t) {
     if (t is! Map) return null;
     final artists = t['artists'];
     final artist = (artists is List && artists.isNotEmpty && artists.first is Map)
         ? (artists.first as Map)['name'].toString()
         : '';
     final album = t['album'];
-    return SpotifyTrack(
+    return ExtTrack(
       (t['name'] ?? '').toString(),
       artist,
       album is Map ? _img(album['images']) : null,
@@ -133,7 +133,7 @@ class SpotifyService {
     return out;
   }
 
-  Future<List<SpotifyTrack>> liked() async {
+  Future<List<ExtTrack>> liked() async {
     final j = await _get('/me/tracks?limit=50');
     return [
       for (final i in (j['items'] as List? ?? []))
@@ -141,14 +141,14 @@ class SpotifyService {
     ];
   }
 
-  Future<List<SpotifyTrack>> playlistTracks(String id) async {
+  Future<List<ExtTrack>> playlistTracks(String id) async {
     dynamic j;
     try {
       j = await _get('/playlists/$id/items?limit=100');
     } catch (_) {
       j = await _get('/playlists/$id/tracks?limit=100');
     }
-    final out = <SpotifyTrack>[];
+    final out = <ExtTrack>[];
     for (final i in (j['items'] as List? ?? [])) {
       if (i is! Map) continue;
       final t = _track(i['item'] ?? i['track']);

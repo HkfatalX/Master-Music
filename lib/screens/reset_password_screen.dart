@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -32,13 +32,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _err = null;
     });
     try {
-      await Supabase.instance.client.auth.updateUser(UserAttributes(password: _p1.text));
+      await AuthFlow.I.updatePassword(_p1.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Senha alterada com sucesso!')));
       }
       widget.onDone();
-    } catch (_) {
-      if (mounted) setState(() => _err = 'Não foi possível alterar. Peça um novo link e tente de novo.');
+    } catch (e) {
+      if (mounted) setState(() => _err = authError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

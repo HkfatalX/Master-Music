@@ -39,7 +39,7 @@ deeplink = """
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="com.mastermusic.master_music" android:host="login-callback"/>
+                <data android:scheme="mastermusic-auth" android:host="callback"/>
             </intent-filter>
 """
 s = s.replace("</activity>", deeplink + "        </activity>", 1)
@@ -80,10 +80,10 @@ gp = f"{APP}/build.gradle.kts" if kts else f"{APP}/build.gradle"
 g = open(gp, encoding="utf-8").read()
 
 if kts:
-    placeholder = f'        manifestPlaceholders["appAuthRedirectScheme"] = "{PKG}"\n'
+    placeholder = f'        manifestPlaceholders["appAuthRedirectScheme"] = "mastermusic"\n'
     g = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 24", g)
 else:
-    placeholder = f"        manifestPlaceholders = [appAuthRedirectScheme: '{PKG}']\n"
+    placeholder = f"        manifestPlaceholders = [appAuthRedirectScheme: 'mastermusic']\n"
     g = re.sub(r"minSdkVersion\s+flutter\.minSdkVersion", "minSdkVersion 24", g)
 
 import shutil

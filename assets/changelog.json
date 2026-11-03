@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.1.0",
+    "date": "03/11/2026",
+    "title": "Site, login por código e novo visual",
+    "added": [
+      "Site do Master Music (player web) conectado à mesma conta do app",
+      "Código de 6 dígitos por e-mail em todo login, cadastro e recuperação de senha, com botão de reenviar",
+      "Continuar com Google",
+      "Conexão com YouTube / conta Google (playlists e curtidos)",
+      "Layout adaptado para tablet e computador com menu lateral",
+      "Novos ícones do Master Music"
+    ],
+    "improved": [
+      "Links de retorno reescritos para funcionar com o Spotify e o Supabase"
+    ],
+    "fixed": [
+      "Erro \"redirect_uri: Unsafe\" ao conectar o Spotify",
+      "Recuperação de senha agora é feita por código, sem depender de link"
+    ]
+  },
+  {
     "version": "1.0.3",
     "date": "03/11/2026",
     "title": "Servidor próprio do Master Music",

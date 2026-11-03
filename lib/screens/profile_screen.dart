@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import '../services/library_service.dart';
 import '../services/player_service.dart';
 import '../services/update_service.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'spotify_screen.dart';
+import 'connections_screen.dart';
 import 'update_ui.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -89,8 +90,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 22),
-        _item(Icons.link_rounded, 'Conexões', 'Spotify e outros apps', () {
-          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SpotifyScreen()));
+        _item(Icons.link_rounded, 'Conexões', 'Spotify, YouTube e Google', () {
+          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen()));
         }, color: const Color(0xFF1DB954)),
         _item(Icons.auto_awesome_rounded, 'Novidades e versões', 'Veja o que mudou em cada versão', () {
           Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ChangelogScreen()));
@@ -108,7 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _item(Icons.logout_rounded, 'Sair da conta', null, () async {
           await PlayerService.I.stopAll();
           Library.I.clear();
-          await Supabase.instance.client.auth.signOut();
+          await AuthFlow.I.signOut();
         }, color: C.muted),
         const SizedBox(height: 12),
         Center(child: Text('Master Music${_version.isEmpty ? '' : ' v$_version'}', style: const TextStyle(color: C.muted, fontSize: 12))),

@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config.dart';
+import 'screens/code_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/shell.dart';
 import 'screens/update_ui.dart';
+import 'services/auth_service.dart';
 import 'services/update_service.dart';
 import 'theme.dart';
 
@@ -115,7 +117,6 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  bool _recovery = false;
   StreamSubscription<AuthState>? _sub;
 
   Future<void> _checkUpdate() async {
@@ -126,32 +127,38 @@ class _AuthGateState extends State<_AuthGate> {
     await showUpdateSheet(context, info, cur);
   }
 
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
+    AuthFlow.I.addListener(_rebuild);
+    AuthFlow.I.handleOAuthReturn();
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((s) {
-      if (!mounted) return;
-      if (s.event == AuthChangeEvent.passwordRecovery) {
-        setState(() => _recovery = true);
-      } else {
-        setState(() {});
-      }
+      if (s.event == AuthChangeEvent.signedIn) AuthFlow.I.handleOAuthReturn();
+      if (s.event == AuthChangeEvent.passwordRecovery) AuthFlow.I.recovery = true;
+      _rebuild();
     });
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    AuthFlow.I.removeListener(_rebuild);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final session = Supabase.instance.client.auth.currentSession;
-    if (session != null && _recovery) {
-      return ResetPasswordScreen(onDone: () => setState(() => _recovery = false));
+    final flow = AuthFlow.I;
+    if (flow.recovery && session != null && flow.pendingEmail == null) {
+      return ResetPasswordScreen(onDone: () {});
     }
+    if (flow.pendingEmail != null) return const CodeScreen();
     return session == null ? const LoginScreen() : const Shell();
   }
 }
