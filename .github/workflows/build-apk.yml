@@ -40,7 +40,7 @@ jobs:
       - name: Atualizar compileSdk de plugins antigos (flutter_appauth)
         run: |
           for f in $(find ~/.pub-cache/hosted -path '*flutter_appauth*/android/build.gradle*'); do
-            sed -i -E 's/(compileSdk(Version)?[ =]+)[0-9]+/\136/' "$f"; grep -n compileSdk "$f"
+            sed -i -E 's/(compileSdk(Version)?[ =]+)[0-9]+/\1 36/' "$f"; grep -n compileSdk "$f" || true
           done
       - run: dart run flutter_launcher_icons
       - name: Analisar código
