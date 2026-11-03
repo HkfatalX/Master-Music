@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -59,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Supabase.instance.client.auth;
     try {
       if (_signup) {
-        final r = await auth.signUp(email: _email.text.trim(), password: _pass.text);
+        final r = await auth.signUp(email: _email.text.trim(), password: _pass.text, emailRedirectTo: Config.authRedirect);
         if (r.session == null && mounted) {
           setState(() {
             _msgOk = true;
@@ -92,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(mail);
+      await Supabase.instance.client.auth.resetPasswordForEmail(mail, redirectTo: Config.authRedirect);
       setState(() {
         _msgOk = true;
         _msg = 'Enviamos um link de recuperação para o seu e-mail.';

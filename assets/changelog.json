@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.1",
+    "date": "03/11/2026",
+    "title": "Correção de e-mails e senha",
+    "added": [
+      "Tela para criar uma nova senha ao tocar no link de \"Esqueci minha senha\""
+    ],
+    "improved": [
+      "O link do e-mail de confirmação agora abre direto o Master Music"
+    ],
+    "fixed": [
+      "Links de confirmação e recuperação não abrem mais um endereço quebrado (localhost)"
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "03/11/2026",
     "title": "Lançamento do Master Music",

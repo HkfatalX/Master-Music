@@ -5,5 +5,6 @@ class Config {
 
   static const repo = 'HkfatalX/master-music';
   static const appName = 'Master Music';
+  static const authRedirect = 'com.mastermusic.master_music://login-callback';
   static const spotifyRedirect = 'com.mastermusic.master_music://callback';
 }

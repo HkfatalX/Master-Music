@@ -33,6 +33,17 @@ if "<queries>" in s:
 else:
     s = s.replace("</manifest>", f"    <queries>\n        {https_query}\n    </queries>\n</manifest>", 1)
 
+deeplink = """
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.mastermusic.master_music" android:host="login-callback"/>
+            </intent-filter>
+"""
+s = s.replace("</activity>", deeplink + "        </activity>", 1)
+
 service = """
         <service android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
