@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.3",
+    "date": "03/11/2026",
+    "title": "Servidor próprio do Master Music",
+    "added": [],
+    "improved": [
+      "O Master Music agora tem seu próprio banco e login, separado dos outros apps"
+    ],
+    "fixed": [
+      "Cadastro e entrada de contas reorganizados do zero"
+    ]
+  },
+  {
     "version": "1.0.2",
     "date": "03/11/2026",
     "title": "Atualizações por cima e aviso na tela de login",
