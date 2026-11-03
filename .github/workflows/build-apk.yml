@@ -36,6 +36,12 @@ jobs:
           cp tool/signing/debug.keystore ~/.android/debug.keystore
 
       - run: flutter pub get
+
+      - name: Atualizar compileSdk de plugins antigos (flutter_appauth)
+        run: |
+          for f in $(find ~/.pub-cache/hosted -path '*flutter_appauth*/android/build.gradle*'); do
+            sed -i -E 's/(compileSdk(Version)?[ =]+)[0-9]+/\136/' "$f"; grep -n compileSdk "$f"
+          done
       - run: dart run flutter_launcher_icons
       - name: Analisar código
         continue-on-error: true
