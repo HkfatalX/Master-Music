@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.2",
+    "date": "03/11/2026",
+    "title": "Atualizações por cima e aviso na tela de login",
+    "added": [],
+    "improved": [
+      "O aviso de nova versão agora aparece assim que o app abre, mesmo antes de entrar na conta"
+    ],
+    "fixed": [
+      "Chave de assinatura fixa: as próximas versões instalam por cima da anterior sem precisar desinstalar"
+    ]
+  },
+  {
     "version": "1.0.1",
     "date": "03/11/2026",
     "title": "Correção de e-mails e senha",

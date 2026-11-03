@@ -30,11 +30,6 @@ jobs:
           cp -r /tmp/scaffold/android ./android
           python3 tool/patch_android.py
 
-      - name: Chave de assinatura estável (permite atualizar sobre a versão anterior)
-        run: |
-          mkdir -p ~/.android
-          cp tool/signing/debug.keystore ~/.android/debug.keystore
-
       - run: flutter pub get
 
       - name: Atualizar compileSdk de plugins antigos (flutter_appauth)
@@ -59,6 +54,10 @@ jobs:
           mkdir -p /tmp/logs && tail -n 150 build.log > /tmp/logs/build.log; cp analyze.log /tmp/logs/ || true
           git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
           git checkout --orphan ci-logs && git rm -rf . -q && cp /tmp/logs/* . && git add *.log && git commit -qm "logs" && git push -f origin ci-logs
+
+      - name: Mostrar assinatura do APK
+        run: |
+          echo "Chave esperada:"; keytool -list -keystore tool/signing/debug.keystore -storepass android | grep SHA
 
       - name: Preparar arquivos
         run: |

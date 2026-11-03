@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/library_service.dart';
 import '../services/player_service.dart';
-import '../services/update_service.dart';
 import '../theme.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
 import 'player_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
-import 'update_ui.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -32,7 +30,6 @@ class _ShellState extends State<Shell> {
     super.initState();
     Library.I.init();
     PlayerService.I.error.addListener(_onError);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
   }
 
   @override
@@ -46,14 +43,6 @@ class _ShellState extends State<Shell> {
     if (e != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
     }
-  }
-
-  Future<void> _checkUpdate() async {
-    final info = await UpdateService.check();
-    if (info == null || !mounted) return;
-    final cur = await UpdateService.currentVersion();
-    if (!mounted) return;
-    await showUpdateSheet(context, info, cur);
   }
 
   @override

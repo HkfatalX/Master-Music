@@ -7,6 +7,8 @@ import 'config.dart';
 import 'screens/login_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/shell.dart';
+import 'screens/update_ui.dart';
+import 'services/update_service.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -116,9 +118,18 @@ class _AuthGateState extends State<_AuthGate> {
   bool _recovery = false;
   StreamSubscription<AuthState>? _sub;
 
+  Future<void> _checkUpdate() async {
+    final info = await UpdateService.check();
+    if (info == null || !mounted) return;
+    final cur = await UpdateService.currentVersion();
+    if (!mounted) return;
+    await showUpdateSheet(context, info, cur);
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((s) {
       if (!mounted) return;
       if (s.event == AuthChangeEvent.passwordRecovery) {

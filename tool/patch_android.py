@@ -86,6 +86,36 @@ else:
     placeholder = f"        manifestPlaceholders = [appAuthRedirectScheme: '{PKG}']\n"
     g = re.sub(r"minSdkVersion\s+flutter\.minSdkVersion", "minSdkVersion 24", g)
 
+import shutil
+shutil.copy("tool/signing/debug.keystore", f"{APP}/mm.keystore")
+if kts:
+    sign_block = (
+        "    signingConfigs {\n"
+        '        create("mm") {\n'
+        '            storeFile = file("mm.keystore")\n'
+        '            storePassword = "android"\n'
+        '            keyAlias = "androiddebugkey"\n'
+        '            keyPassword = "android"\n'
+        "        }\n"
+        "    }\n\n"
+    )
+    g = g.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("mm")')
+else:
+    sign_block = (
+        "    signingConfigs {\n"
+        "        mm {\n"
+        "            storeFile file('mm.keystore')\n"
+        "            storePassword 'android'\n"
+        "            keyAlias 'androiddebugkey'\n"
+        "            keyPassword 'android'\n"
+        "        }\n"
+        "    }\n\n"
+    )
+    g = g.replace("signingConfig signingConfigs.debug", "signingConfig signingConfigs.mm")
+assert "buildTypes {" in g, "buildTypes nao encontrado"
+g = g.replace("buildTypes {", sign_block + "    buildTypes {", 1)
+assert "signingConfigs.getByName(\"mm\")" in g or "signingConfigs.mm" in g, "signingConfig release nao trocado"
+
 g, n = re.subn(r"(defaultConfig\s*\{\n)", r"\1" + placeholder.replace("\\", "\\\\"), g, count=1)
 assert n == 1, "defaultConfig nao encontrado"
 open(gp, "w", encoding="utf-8").write(g)
