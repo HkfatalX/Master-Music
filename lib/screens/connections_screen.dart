@@ -18,6 +18,10 @@ class ConnectionsScreen extends StatefulWidget {
 
 class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindingObserver {
   final _id = TextEditingController();
+  final _link = TextEditingController();
+  bool _impBusy = false;
+  String? _impErr;
+  List<Map<String, String>> _saved = [];
   bool _spConnected = false;
   bool _ytConnected = false;
   bool _loading = true;
@@ -39,6 +43,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _id.dispose();
+    _link.dispose();
     super.dispose();
   }
 
@@ -50,6 +55,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
   Future<void> _init() async {
     final sp = SpotifyService.I;
     _id.text = await sp.clientId() ?? '';
+    _saved = await sp.savedLinks();
     _spConnected = await sp.isConnected();
     if (_spConnected) await _loadSpotify();
     await _loadYt();
@@ -62,7 +68,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
       _spPlaylists = await SpotifyService.I.playlists();
       _spError = null;
     } catch (_) {
-      _spError = 'Não foi possível ler sua conta do Spotify agora (a API do Spotify pode exigir Premium).';
+      _spError = 'O Spotify bloqueia a leitura da conta para apps de contas grátis (regra dele desde 2026). Use "Spotify por link" acima.';
     }
   }
 
@@ -171,6 +177,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), children: [
+                  _importCard(),
                   _spotifyCard(),
                 ]),
               ),
@@ -229,6 +236,74 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
               onTap: () => _open(p.name, () => YouTubeService.I.playlistTracks(p.id)),
             ),
         ],
+      ],
+    );
+  }
+
+  Future<void> _import() async {
+    if (_link.text.trim().isEmpty) return;
+    setState(() {
+      _impBusy = true;
+      _impErr = null;
+    });
+    try {
+      final i = await SpotifyService.I.importLink(_link.text);
+      await SpotifyService.I.saveLink(i);
+      _saved = await SpotifyService.I.savedLinks();
+      _link.clear();
+      if (mounted) _open(i.name, () async => i.tracks);
+    } catch (e) {
+      _impErr = e.toString().replaceFirst('Exception: ', '');
+    }
+    if (mounted) setState(() => _impBusy = false);
+  }
+
+  Widget _importCard() {
+    return _card(
+      color: const Color(0xFF1DB954),
+      icon: Icons.link_rounded,
+      name: 'Spotify por link',
+      status: 'Funciona com conta grátis',
+      ok: true,
+      body: [
+        const Text(
+          'Cole o link de uma playlist, álbum ou faixa PÚBLICA do Spotify (no Spotify: Compartilhar > Copiar link). As músicas aparecem aqui e tocam pelo catálogo livre. Para usar suas playlists, deixe-as públicas.',
+          style: TextStyle(color: C.muted, height: 1.4),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _link,
+          decoration: InputDecoration(
+            labelText: 'Link do Spotify',
+            filled: true,
+            fillColor: C.surface2,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          ),
+          onSubmitted: (_) => _import(),
+        ),
+        if (_impErr != null) ...[const SizedBox(height: 10), Text(_impErr!, style: const TextStyle(color: C.pink))],
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: GradientButton(label: 'Importar', loading: _impBusy, onPressed: _import)),
+        for (final x in _saved)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.queue_music_rounded, color: Colors.white),
+            ),
+            title: Text(x['name'] ?? 'Spotify', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+            trailing: IconButton(
+              icon: const Icon(Icons.close_rounded, color: C.muted),
+              onPressed: () async {
+                await SpotifyService.I.removeLink(x['id']!);
+                _saved = await SpotifyService.I.savedLinks();
+                if (mounted) setState(() {});
+              },
+            ),
+            onTap: () => _open(x['name'] ?? 'Spotify', () async => (await SpotifyService.I.importLink('https://open.spotify.com/${x['type']}/${x['id']}')).tracks),
+          ),
       ],
     );
   }

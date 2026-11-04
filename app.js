@@ -329,9 +329,10 @@ async function spGet(path) {
   return r.json();
 }
 const spTrack = (t) => t && t.name ? { name: t.name, artist: (t.artists && t.artists[0] && t.artists[0].name) || '', art: (t.album && t.album.images && t.album.images[0] && t.album.images[0].url) || null } : null;
-const spMsg = (e) => String(e.message) === 'premium' ? 'O Spotify só libera os dados dessa conta para apps de desenvolvedor com Premium. Se sua conta é grátis, isso é limite do Spotify, não do Master Music.' : 'Não foi possível ler o Spotify agora. Tente reconectar.';
+const spMsg = (e) => String(e.message) === 'premium' ? 'O Spotify bloqueia a leitura da conta para apps de contas grátis (regra dele desde 2026). Use "Spotify por link" acima.' : 'Não foi possível ler o Spotify agora. Tente reconectar.';
 async function vConexoes(v) {
-  v.innerHTML = `<h1>Conexões</h1><p class="muted" style="margin:6px 0 16px">Use suas playlists de outros serviços no Master Music. A música toca pelo catálogo livre.</p><div id="cx">${skel(2)}</div>`;
+  v.innerHTML = `<h1>Conexões</h1><p class="muted" style="margin:6px 0 16px">Use suas playlists de outros serviços no Master Music. A música toca pelo catálogo livre.</p>${spiBox()}<div id="spt"></div><div id="cx">${skel(2)}</div>`;
+  spiBind();
   const err = await spHandleReturn();
   const box = $('#cx'); if (!box) return;
   const t = spLoad();
@@ -342,7 +343,7 @@ async function vConexoes(v) {
     $('#spc').addEventListener('click', async (e) => { e.target.disabled = true; try { await spConnect(); } catch (x) { toast(x.message); e.target.disabled = false; } });
     return;
   }
-  box.innerHTML = `<div class="box">${head}<p style="margin:12px 0"><button class="btn alt" id="spd">Desconectar</button></p><div id="spl">${skel(4)}</div><div id="spt"></div></div>`;
+  box.innerHTML = `<div class="box">${head}<p style="margin:12px 0"><button class="btn alt" id="spd">Desconectar</button></p><div id="spl">${skel(4)}</div></div>`;
   $('#spd').addEventListener('click', () => { spSave(null); render(); });
   try {
     const pl = await spGet('/me/playlists?limit=50');
@@ -367,6 +368,48 @@ async function spPlay(i) {
     if (!r.length) { toast('Essa faixa não está no catálogo livre.'); return; }
     playQueue(r, 0);
   } catch (e) { toast('Falha na busca. Verifique sua internet.'); }
+}
+
+/* ---------- Spotify por link (playlist/álbum/faixa pública, sem Premium) ---------- */
+const SPI = { key: 'mm_sp_links_v1', re: /(?:open\.spotify\.com\/(?:intl-[a-z]+\/)?|spotify:)(playlist|album|track)[\/:]([A-Za-z0-9]{10,30})/ };
+const spiSaved = () => { try { return JSON.parse(localStorage.getItem(SPI.key) || '[]'); } catch (e) { return []; } };
+const spiStore = (a) => { try { localStorage.setItem(SPI.key, JSON.stringify(a.slice(0, 30))); } catch (e) {} };
+async function spiFetch(type, id) {
+  const r = await fetch(CFG.url + '/functions/v1/spotify-embed?type=' + type + '&id=' + id, { headers: { apikey: CFG.key } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || 'Erro ' + r.status);
+  return j;
+}
+function spiShow(j) {
+  const out = $('#spt'); if (!out) return;
+  const l = (j.tracks || []).map((t) => ({ name: t.name, artist: t.artist, art: j.cover || null })); S.sp = l;
+  out.innerHTML = `<h2>${esc(j.name)}</h2>` + (l.length ? l.map((t, i) => `<div class="row" data-sp="${i}">${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}<div class="t"><b>${esc(t.name)}</b><span>${esc(t.artist)}</span></div></div>`).join('') : '<p class="muted">Nenhuma faixa.</p>');
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function spiList() {
+  const l = spiSaved(); const el = $('#spi-l'); if (!el) return;
+  el.innerHTML = l.map((x) => `<div class="row" style="cursor:default"><a class="t" data-spi="${esc(x.type)}:${esc(x.id)}" style="cursor:pointer"><b>${esc(x.name)}</b><span>${esc(x.type)}</span></a><button class="ib" data-spirm="${esc(x.id)}" aria-label="Remover">✕</button></div>`).join('');
+}
+async function spiOpen(type, id, save) {
+  const out = $('#spt'); if (out) out.innerHTML = skel(4);
+  try {
+    const j = await spiFetch(type, id);
+    if (save) { const a = spiSaved().filter((x) => x.id !== id); a.unshift({ type, id, name: j.name }); spiStore(a); spiList(); }
+    spiShow(j);
+  } catch (e) { if (out) out.innerHTML = `<p class="err">${esc(/p[úu]blica|public/i.test(e.message) ? 'Não encontrei. A playlist precisa estar pública.' : 'Não consegui ler esse link agora. Confira se é público e tente de novo.')}</p>`; }
+}
+function spiBox() {
+  return `<div class="box" style="margin-bottom:16px"><div class="row" style="cursor:default"><div class="ph" style="width:52px;height:52px;border-radius:14px;flex:none;background:#1DB954">${ic.link}</div><div class="t"><b>Spotify por link</b><span>Funciona com conta grátis</span></div></div>
+  <p class="muted small" style="margin:12px 0">Cole o link de uma playlist, álbum ou faixa <b>pública</b> do Spotify (Compartilhar &gt; Copiar link). As músicas tocam pelo catálogo livre. Para usar suas playlists, deixe-as públicas.</p>
+  <form id="spi-f" style="display:flex;gap:8px"><input class="field" id="spi-i" placeholder="https://open.spotify.com/playlist/..." style="margin:0"><button class="btn">Importar</button></form><p class="err" id="spi-e"></p><div id="spi-l"></div></div>`;
+}
+function spiBind() {
+  spiList();
+  $('#spi-f').addEventListener('submit', (e) => {
+    e.preventDefault(); const m = $('#spi-i').value.match(SPI.re);
+    if (!m) { $('#spi-e').textContent = 'Cole um link de playlist, álbum ou faixa do Spotify.'; return; }
+    $('#spi-e').textContent = ''; spiOpen(m[1], m[2], true); $('#spi-i').value = '';
+  });
 }
 
 /* ---------- router ---------- */
@@ -434,6 +477,8 @@ document.addEventListener('click', async (e) => {
     else if (act === 'delpl') { if (confirm('Apagar playlist?')) { await sb.from('mm_playlists').delete().eq('id', b.dataset.id); go('/biblioteca/playlists'); } }
     return;
   }
+  const si = e.target.closest('[data-spi]'); if (si) { const [ty, id] = si.dataset.spi.split(':'); spiOpen(ty, id, false); return; }
+  const sr = e.target.closest('[data-spirm]'); if (sr) { spiStore(spiSaved().filter((x) => x.id !== sr.dataset.spirm)); spiList(); return; }
   const sl = e.target.closest('[data-sppl]'); if (sl) { spOpen(sl.dataset.sppl); return; }
   const sp = e.target.closest('[data-sp]'); if (sp) { spPlay(Number(sp.dataset.sp)); return; }
   const r = e.target.closest('[data-play]'); if (r) playQueue(listOf(r), Number(r.dataset.play));

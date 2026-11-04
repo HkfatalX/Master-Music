@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.2.1",
+    "date": "04/11/2026",
+    "title": "Spotify por link (sem Premium)",
+    "added": [
+      "Importar playlist, álbum ou faixa pública do Spotify colando o link"
+    ],
+    "improved": [
+      "Mensagem clara quando o Spotify bloqueia contas grátis"
+    ],
+    "fixed": []
+  },
+  {
     "version": "1.2.0",
     "date": "04/11/2026",
     "title": "Conexão do Spotify refeita",

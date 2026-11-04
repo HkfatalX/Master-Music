@@ -15,6 +15,14 @@ class ExtTrack {
   const ExtTrack(this.name, this.artist, this.art);
 }
 
+class SpotifyImport {
+  final String type;
+  final String id;
+  final String name;
+  final List<ExtTrack> tracks;
+  const SpotifyImport(this.type, this.id, this.name, this.tracks);
+}
+
 class SpotifyPlaylist {
   final String id;
   final String name;
@@ -34,6 +42,59 @@ class SpotifyService {
   static const _authUrl = 'accounts.spotify.com';
   static const _tokenUrl = 'https://accounts.spotify.com/api/token';
   static const _scopes = 'user-library-read playlist-read-private user-read-private';
+
+  static final _linkRe = RegExp(r'(?:open\.spotify\.com/(?:intl-[a-z]+/)?|spotify:)(playlist|album|track)[/:]([A-Za-z0-9]{10,30})');
+
+  /// Lê uma playlist/álbum/faixa PÚBLICA pelo link (não precisa de login nem de Premium).
+  Future<SpotifyImport> importLink(String link) async {
+    final m = _linkRe.firstMatch(link.trim());
+    if (m == null) throw Exception('Cole um link de playlist, álbum ou faixa do Spotify.');
+    final type = m.group(1)!;
+    final id = m.group(2)!;
+    final r = await http.get(Uri.parse('https://open.spotify.com/embed/$type/$id'), headers: {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
+      'Accept-Language': 'en',
+    }).timeout(const Duration(seconds: 20));
+    if (r.statusCode != 200) throw Exception('Não encontrei. A playlist precisa estar pública.');
+    final d = RegExp(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', dotAll: true).firstMatch(r.body);
+    if (d == null) throw Exception('O Spotify mudou o formato da página.');
+    final e = jsonDecode(d.group(1)!)['props']['pageProps']['state']['data']['entity'];
+    final cover = (e['coverArt']?['sources'] is List && (e['coverArt']['sources'] as List).isNotEmpty) ? e['coverArt']['sources'][0]['url']?.toString() : null;
+    final out = <ExtTrack>[];
+    if (e['trackList'] is List) {
+      for (final t in e['trackList']) {
+        final n = (t['title'] ?? '').toString();
+        if (n.isNotEmpty) out.add(ExtTrack(n, (t['subtitle'] ?? '').toString(), cover));
+      }
+    } else if (type == 'track') {
+      final a = e['artists'] is List ? (e['artists'] as List).map((x) => x['name']).join(', ') : (e['subtitle'] ?? '');
+      out.add(ExtTrack((e['title'] ?? e['name'] ?? '').toString(), a.toString(), cover));
+    }
+    if (out.isEmpty) throw Exception('Nenhuma faixa encontrada.');
+    return SpotifyImport(type, id, (e['name'] ?? e['title'] ?? 'Spotify').toString(), out);
+  }
+
+  Future<List<Map<String, String>>> savedLinks() async {
+    try {
+      final j = jsonDecode(await _store.read(key: 'sp_links') ?? '[]');
+      return [for (final x in j) Map<String, String>.from(x as Map)];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveLink(SpotifyImport i) async {
+    final l = await savedLinks();
+    l.removeWhere((x) => x['id'] == i.id);
+    l.insert(0, {'type': i.type, 'id': i.id, 'name': i.name});
+    await _store.write(key: 'sp_links', value: jsonEncode(l.take(30).toList()));
+  }
+
+  Future<void> removeLink(String id) async {
+    final l = await savedLinks();
+    l.removeWhere((x) => x['id'] == id);
+    await _store.write(key: 'sp_links', value: jsonEncode(l));
+  }
 
   Future<String?> clientId() => _store.read(key: 'sp_client_id');
   Future<void> saveClientId(String id) => _store.write(key: 'sp_client_id', value: id.trim());
