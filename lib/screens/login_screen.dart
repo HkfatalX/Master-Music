@@ -154,34 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         child: GradientButton(label: _signup ? 'Criar conta' : 'Entrar', loading: _busy, onPressed: _submit),
                       ),
-                      const SizedBox(height: 14),
-                      Row(children: const [
-                        Expanded(child: Divider(color: C.surface2)),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('ou', style: TextStyle(color: C.muted))),
-                        Expanded(child: Divider(color: C.surface2)),
-                      ]),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: C.surface2),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          onPressed: _busy ? null : () => _run(AuthFlow.I.googleLogin),
-                          icon: Container(
-                            width: 22,
-                            height: 22,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: const Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w900, fontSize: 14)),
-                          ),
-                          label: const Text('Continuar com Google', style: TextStyle(color: C.text, fontWeight: FontWeight.w700)),
-                        ),
-                      ),
                       const SizedBox(height: 10),
-                      if (!_signup) TextButton(onPressed: _busy ? null : _forgot, child: const Text('Esqueci minha senha', style: TextStyle(color: C.muted))),
                       TextButton(
                         onPressed: () => setState(() {
                           _signup = !_signup;
@@ -190,9 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(_signup ? 'Já tenho conta • Entrar' : 'Não tem conta? Criar agora',
                             style: const TextStyle(color: C.cyan, fontWeight: FontWeight.w700)),
                       ),
-                      const SizedBox(height: 4),
-                      const Text('Por segurança, enviamos um código de 6 dígitos para o seu e-mail em cada entrada.',
-                          textAlign: TextAlign.center, style: TextStyle(color: C.muted, fontSize: 12, height: 1.4)),
                     ]),
                   ),
                 ),

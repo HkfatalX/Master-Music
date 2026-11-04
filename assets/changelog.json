@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.1.2",
+    "date": "04/11/2026",
+    "title": "Login simples e site corrigido",
+    "added": [],
+    "improved": [
+      "Entrada só com e-mail e senha, sem código de 6 dígitos, por enquanto",
+      "Conexões: por enquanto só o Spotify"
+    ],
+    "fixed": [
+      "Site não abria (tela preta): agora não depende de bibliotecas externas"
+    ]
+  },
+  {
     "version": "1.1.1",
     "date": "03/11/2026",
     "title": "Correções do Spotify, Google e site",

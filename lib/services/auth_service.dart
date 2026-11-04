@@ -77,18 +77,11 @@ class AuthFlow extends ChangeNotifier {
       }
       rethrow;
     }
-    await _a.signOut(); // só entra de verdade depois do código
-    await _sendLogin(email);
-    begin(email, CodePurpose.login);
   }
 
   Future<void> signUp(String email, String pass) async {
     final r = await _a.signUp(email: email, password: pass);
-    if (r.session != null) {
-      await _a.signOut();
-      await _sendLogin(email);
-      begin(email, CodePurpose.login);
-    } else {
+    if (r.session == null) {
       begin(email, CodePurpose.signup);
     }
   }

@@ -170,7 +170,6 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), children: [
-                  _youtubeCard(),
                   _spotifyCard(),
                 ]),
               ),
