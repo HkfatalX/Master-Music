@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="img/favicon.png">
 <title>Voltando para o Master Music…</title>
 <style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0714;color:#F5F3FF;font-family:system-ui,sans-serif;text-align:center;padding:24px}
@@ -21,9 +22,14 @@ p{color:#A79BC4}
 </div>
 <script>
 (function () {
-  var target = 'mastermusic://spotify-callback' + location.search;
-  document.getElementById('open').href = target;
-  setTimeout(function () { location.href = target; }, 150);
+  var q = location.search || '';
+  var intent = 'intent://spotify-callback' + q + '#Intent;scheme=mastermusic;package=com.mastermusic.master_music;end';
+  var custom = 'mastermusic://spotify-callback' + q;
+  var android = /Android/i.test(navigator.userAgent);
+  var btn = document.getElementById('open');
+  btn.href = android ? intent : custom;
+  if (!q || q.indexOf('code=') < 0) { document.getElementById('m').textContent = 'Nenhum retorno do Spotify encontrado. Volte ao app e tente conectar de novo.'; }
+  else { setTimeout(function () { location.href = android ? intent : custom; }, 200); }
 })();
 </script>
 </body>

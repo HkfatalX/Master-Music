@@ -100,8 +100,9 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
       await SpotifyService.I.connect();
       _spConnected = true;
       await _loadSpotify();
-    } catch (_) {
-      _spError = 'Falha ao conectar. Confira o Client ID e o Redirect URI no painel do Spotify.';
+    } catch (e) {
+      final d = e.toString().replaceAll('\n', ' ');
+      _spError = 'Falha ao conectar. Confira o Client ID e o Redirect URI no painel do Spotify. (${d.length > 140 ? d.substring(0, 140) : d})';
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -278,17 +279,38 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
         SizedBox(
           width: double.infinity,
           child: _spConnected
-              ? OutlinedButton(
-                  onPressed: () async {
-                    await SpotifyService.I.disconnect();
-                    setState(() {
-                      _spConnected = false;
-                      _spPlaylists = [];
-                      _spName = '';
-                    });
-                  },
-                  child: const Text('Desconectar'),
-                )
+              ? Column(children: [
+                  if (_spError != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: GradientButton(
+                        label: 'Reconectar ao Spotify',
+                        loading: _busy,
+                        onPressed: () async {
+                          await SpotifyService.I.disconnect();
+                          if (mounted) setState(() => _spConnected = false);
+                          await _connectSpotify();
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        await SpotifyService.I.disconnect();
+                        setState(() {
+                          _spConnected = false;
+                          _spPlaylists = [];
+                          _spName = '';
+                          _spError = null;
+                        });
+                      },
+                      child: const Text('Desconectar'),
+                    ),
+                  ),
+                ])
               : GradientButton(label: 'Conectar ao Spotify', loading: _busy, onPressed: _connectSpotify),
         ),
         if (_spConnected) ...[

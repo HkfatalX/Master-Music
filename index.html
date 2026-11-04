@@ -15,14 +15,14 @@
 <body>
 <div id="app">
   <aside id="side" hidden></aside>
-  <main id="main"><div id="view" tabindex="-1"></div></main>
+  <main id="main"><div id="view" tabindex="-1"><p style="padding:24px;text-align:center;color:#A79BC4">Carregando Master Music…</p></div></main>
 </div>
 <div id="player" hidden></div>
 <nav id="tabs" hidden></nav>
 <div id="toast" role="status" aria-live="polite"></div>
 <audio id="audio" preload="none"></audio>
 <noscript><p style="padding:24px">Ative o JavaScript para usar o Master Music.</p></noscript>
-<script>window.addEventListener("error",function(e){var v=document.getElementById("view");if(v&&!v.children.length)v.innerHTML="<p style=\"padding:24px\">Erro ao carregar: "+String(e.message).replace(/</g,"&lt;")+"</p>"})</script>
+<script>(function(){function show(m){var v=document.getElementById("view");if(v&&/Carregando/.test(v.textContent))v.innerHTML="<p style=\"padding:24px\">Erro ao carregar: "+String(m).replace(/</g,"&lt;")+"</p>"}window.addEventListener("error",function(e){show(e.message)});window.addEventListener("unhandledrejection",function(e){show(e.reason&&e.reason.message||e.reason)})})()</script>
 <script src="lite.js?v=2"></script>
 <script src="app.js?v=2"></script>
 
