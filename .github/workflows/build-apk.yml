@@ -76,6 +76,16 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-$V.apk"
           python3 tool/release_notes.py "$V" > out/notes.md
 
+      - name: Compilar versão Lite
+        shell: bash
+        run: |
+          set -o pipefail
+          sed -i -E '/applicationId/ s/master_music"/master_music.lite"/' android/app/build.gradle*
+          sed -i 's/android:label="Master Music"/android:label="Master Music Lite"/' android/app/src/main/AndroidManifest.xml
+          grep -n applicationId android/app/build.gradle*
+          flutter build apk --release --target-platform android-arm,android-arm64 --dart-define=LITE=true 2>&1 | tee build-lite.log
+          cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Lite-$VERSION.apk"
+
       - uses: actions/upload-artifact@v4
         with:
           name: MasterMusic-apk
@@ -87,4 +97,6 @@ jobs:
           tag_name: v${{ env.VERSION }}
           name: Master Music ${{ env.VERSION }}
           body_path: out/notes.md
-          files: out/MasterMusic-${{ env.VERSION }}.apk
+          files: |
+            out/MasterMusic-${{ env.VERSION }}.apk
+            out/MasterMusic-Lite-${{ env.VERSION }}.apk

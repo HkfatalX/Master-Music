@@ -104,4 +104,13 @@ class Library {
   Future<void> removeFromPlaylist(String playlistId, String trackId) async {
     await _db.from('mm_playlist_tracks').delete().eq('playlist_id', playlistId).eq('track_id', trackId);
   }
+
+  /// Adiciona várias faixas de uma vez (uma única chamada ao servidor).
+  Future<void> addManyToPlaylist(String playlistId, List<Track> tracks) async {
+    if (tracks.isEmpty) return;
+    final base = await _db.from('mm_playlist_tracks').count().eq('playlist_id', playlistId);
+    await _db.from('mm_playlist_tracks').upsert([
+      for (var i = 0; i < tracks.length; i++) {'playlist_id': playlistId, ...tracks[i].toRow(), 'position': base + i},
+    ]);
+  }
 }

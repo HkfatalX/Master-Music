@@ -155,7 +155,7 @@ class _PlaylistsState extends State<_Playlists> {
       ),
       Positioned(
         right: 20,
-        bottom: 100,
+        bottom: 190,
         child: FloatingActionButton.extended(
           backgroundColor: C.violet,
           foregroundColor: Colors.white,

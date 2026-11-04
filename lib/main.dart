@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config.dart';
 import 'screens/code_screen.dart';
@@ -26,6 +27,10 @@ Future<void> main() async {
   );
   await Supabase.initialize(url: Config.supabaseUrl, anonKey: Config.supabaseKey);
   runApp(const MasterMusicApp());
+  // Android 13+: sem esta permissão a notificação com play/pause/próxima/anterior não aparece.
+  try {
+    await Permission.notification.request();
+  } catch (_) {}
 }
 
 class MasterMusicApp extends StatelessWidget {

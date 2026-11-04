@@ -1,3 +1,4 @@
+import 'config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'models/track.dart';
@@ -18,6 +19,7 @@ class FadeSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (Config.lite) return child;
     final ms = 380 + (index > 8 ? 8 : index) * 70;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),

@@ -1,4 +1,6 @@
 class Config {
+  /// Versão Lite (celulares fracos): sem blur e sem animações pesadas.
+  static const lite = bool.fromEnvironment('LITE');
   // Chaves PÚBLICAS de cliente (protegidas por RLS no banco). Nunca coloque service_role aqui.
   static const supabaseUrl = 'https://jpoxxjjmxntwjdmgcypi.supabase.co';
   static const supabaseKey = 'sb_publishable__21zkEoebAUtpDQsF-Eizg_fc1YSfbX';

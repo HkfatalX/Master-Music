@@ -47,7 +47,9 @@ class UpdateService {
       final assets = j['assets'];
       if (assets is List) {
         for (final a in assets) {
-          if (a is Map && a['name'].toString().endsWith('.apk')) {
+          if (a is! Map || !a['name'].toString().endsWith('.apk')) continue;
+          final isLite = a['name'].toString().toLowerCase().contains('lite');
+          if (isLite == Config.lite) {
             apk = a['browser_download_url']?.toString();
             break;
           }

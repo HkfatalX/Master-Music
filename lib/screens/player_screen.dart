@@ -1,3 +1,4 @@
+import '../config.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -118,7 +119,7 @@ class PlayerScreen extends StatelessWidget {
               if ((d.primaryVelocity ?? 0) > 400) Navigator.of(context).pop();
             },
             child: Stack(fit: StackFit.expand, children: [
-              if (t.artwork != null)
+              if (t.artwork != null && !Config.lite)
                 ImageFiltered(
                   imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
                   child: CachedNetworkImage(imageUrl: t.artwork!, fit: BoxFit.cover),

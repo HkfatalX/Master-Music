@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../models/track.dart';
 import '../services/audius_service.dart';
+import '../services/library_service.dart';
 import '../services/auth_service.dart';
 import '../services/player_service.dart';
 import '../services/spotify_service.dart';
@@ -134,8 +135,35 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
     }
   }
 
+  Future<void> _saveAsPlaylist(String title, List<ExtTrack> list) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(content: Text('Salvando "$title"... procurando as faixas (pode levar um pouco).'), duration: const Duration(seconds: 30)));
+    final found = <Track>[];
+    final seen = <String>{};
+    try {
+      for (var i = 0; i < list.length; i += 4) {
+        final batch = list.skip(i).take(4).toList();
+        final res = await Future.wait(batch.map((e) => Audius.match(e.name, e.artist)));
+        for (final t in res) {
+          if (t != null && seen.add(t.id)) found.add(t);
+        }
+      }
+      messenger.hideCurrentSnackBar();
+      if (found.isEmpty) {
+        messenger.showSnackBar(const SnackBar(content: Text('Nenhuma dessas faixas está no catálogo livre.')));
+        return;
+      }
+      final p = await Library.I.createPlaylist(title);
+      await Library.I.addManyToPlaylist(p.id, found);
+      messenger.showSnackBar(SnackBar(content: Text('Playlist "$title" salva com ${found.length} de ${list.length} faixas. Veja em Biblioteca.')));
+    } catch (_) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(const SnackBar(content: Text('Não foi possível salvar a playlist.')));
+    }
+  }
+
   void _open(String title, Future<List<ExtTrack>> Function() loader) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _ExtTracks(title: title, loader: loader, onPlay: _playMatch)));
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _ExtTracks(title: title, loader: loader, onPlay: _playMatch, onSave: _saveAsPlaylist)));
   }
 
   Widget _card({required Color color, required IconData icon, required String name, required String status, required bool ok, required List<Widget> body}) {
@@ -416,12 +444,22 @@ class _ExtTracks extends StatelessWidget {
   final String title;
   final Future<List<ExtTrack>> Function() loader;
   final Future<void> Function(List<ExtTrack>, int) onPlay;
-  const _ExtTracks({required this.title, required this.loader, required this.onPlay});
+  final Future<void> Function(String, List<ExtTrack>) onSave;
+  const _ExtTracks({required this.title, required this.loader, required this.onPlay, required this.onSave});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          TextButton.icon(
+            onPressed: () async => onSave(title, await loader()),
+            icon: const Icon(Icons.library_add_rounded, color: C.cyan),
+            label: const Text('Salvar', style: TextStyle(color: C.cyan, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<ExtTrack>>(
         future: loader(),
         builder: (context, snap) {
