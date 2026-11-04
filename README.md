@@ -1,18 +1,20 @@
 # Master Music 🎵
 
-App Android de música moderno, gratuito e seguro (Flutter + Supabase).
+Player de música moderno, gratuito e seguro — **app Android + site**, mesma conta.
 
-- Login/cadastro seguros (Supabase Auth) — favoritos, playlists e histórico salvos na conta (RLS)
+- Site: https://hkfatalx.github.io/Master-Music/
+- App (APK): aba **Releases** → `MasterMusic-x.y.z.apk`
+
+## Recursos
+- Login por e-mail + código de 6 dígitos (Supabase), Continuar com Google
 - Catálogo gratuito e legal do Audius, letras via LRCLIB
-- Player com segundo plano, fila, aleatório, repetir e timer para dormir
-- Conexão oficial com o Spotify (OAuth PKCE) — playlists e curtidas
-- Aviso de atualização opcional + log de novidades dentro do app
+- Favoritos, playlists e histórico sincronizados entre app e site
+- Conexão com Spotify e YouTube/Google (playlists e curtidas)
+- Aviso de atualização opcional + log de novidades
 
-## Baixar
-Aba **Releases** deste repositório → último `MasterMusic-x.y.z.apk`.
+## Estrutura
+- `index.html`, `app.js`, `style.css`, `404.html`, `img/` — site (GitHub Pages, branch `main`)
+- `lib/`, `pubspec.yaml`, `assets/`, `tool/` — app Flutter (APK gerado pelo GitHub Actions)
 
-## Lançar uma nova versão
-1. Aumente `version:` no `pubspec.yaml` (ex.: `1.0.1+2`)
-2. Adicione a entrada no topo de `assets/changelog.json`
-3. Faça push na `main` — o GitHub Actions gera o APK e publica a Release.
-   Quem está na versão antiga vê o aviso de atualização ao abrir o app.
+## Nova versão do app
+Aumente `version:` no `pubspec.yaml`, adicione a entrada no topo de `assets/changelog.json` e faça push na `main`.
