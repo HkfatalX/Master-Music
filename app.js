@@ -8,9 +8,7 @@ const CFG = {
   audius: 'https://api.audius.co/v1',
   app: 'MasterMusic',
 };
-const sb = window.supabase.createClient(CFG.url, CFG.key, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
-});
+const sb = window.MMLite(CFG.url, CFG.key);
 const BASE = (() => {
   const m = location.pathname.match(/^\/[^/]+\//);
   return location.hostname.endsWith('github.io') && m ? m[0] : '/';
@@ -51,6 +49,7 @@ function authError(e) {
   if (m.includes('weak') || m.includes('password should')) return 'Senha fraca. Use 8+ caracteres.';
   if (m.includes('same password') || m.includes('different from the old')) return 'Escolha uma senha diferente da anterior.';
   if (m.includes('provider') && m.includes('enabled')) return 'O login com Google ainda não foi ativado neste servidor. Use e-mail e senha por enquanto.';
+  if (m.includes('conta criada')) return 'Conta criada! Confirme o link enviado ao seu e-mail e depois toque em Entrar.';
   if (m.includes('fetch') || m.includes('network')) return 'Sem conexão com a internet.';
   return 'Algo deu errado. Tente de novo.';
 }
@@ -68,58 +67,16 @@ async function audiusList(path, q) {
 }
 const streamUrl = (id) => `${CFG.audius}/tracks/${encodeURIComponent(id)}/stream?app_name=${CFG.app}`;
 
-/* ---------- auth ---------- */
+/* ---------- auth (e-mail e senha) ---------- */
 const A = sb.auth;
 async function passwordLogin(email, pass) {
   const { error } = await A.signInWithPassword({ email, password: pass });
-  if (error) {
-    if (/not confirmed/i.test(error.message)) { await A.resend({ type: 'signup', email }); S.pending = { email, purpose: 'signup' }; return; }
-    throw error;
-  }
-  await A.signOut();
-  const r = await A.signInWithOtp({ email, options: { shouldCreateUser: false } }); if (r.error) throw r.error;
-  S.pending = { email, purpose: 'login' };
+  if (error) throw error;
 }
 async function signUp(email, pass) {
-  const { data, error } = await A.signUp({ email, password: pass, options: { emailRedirectTo: location.origin + BASE } });
+  const { data, error } = await A.signUp({ email, password: pass });
   if (error) throw error;
-  if (data.session) { await A.signOut(); const r = await A.signInWithOtp({ email, options: { shouldCreateUser: false } }); if (r.error) throw r.error; S.pending = { email, purpose: 'login' }; }
-  else S.pending = { email, purpose: 'signup' };
-}
-async function forgot(email) { const { error } = await A.resetPasswordForEmail(email); if (error) throw error; S.pending = { email, purpose: 'recovery' }; }
-async function verifyCode(code) {
-  const { email, purpose } = S.pending;
-  const type = purpose === 'login' ? 'email' : purpose;
-  if (purpose === 'recovery') S.recovery = true;
-  const { error } = await A.verifyOtp({ email, token: code, type });
-  if (error) { if (purpose === 'recovery') S.recovery = false; throw error; }
-  S.pending = null;
-}
-async function resendCode() {
-  const { email, purpose } = S.pending; let r;
-  if (purpose === 'login') r = await A.signInWithOtp({ email, options: { shouldCreateUser: false } });
-  else if (purpose === 'signup') r = await A.resend({ type: 'signup', email });
-  else r = await A.resetPasswordForEmail(email);
-  if (r.error) throw r.error;
-}
-async function googleEnabled() {
-  try { const r = await fetch(CFG.url + '/auth/v1/settings', { headers: { apikey: CFG.key } }); const j = await r.json(); return !!(j.external && j.external.google); } catch { return true; }
-}
-async function googleLogin() {
-  if (!(await googleEnabled())) throw new Error('Unsupported provider: provider is not enabled');
-  sessionStorage.setItem('mm_oauth', 'login');
-  const { error } = await A.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + BASE } });
-  if (error) { sessionStorage.removeItem('mm_oauth'); throw error; }
-}
-async function handleOAuthReturn() {
-  if (!sessionStorage.getItem('mm_oauth')) return;
-  const { data } = await A.getSession(); const s = data.session; if (!s) return;
-  sessionStorage.removeItem('mm_oauth');
-  const email = s.user.email; if (!email) return;
-  await A.signOut();
-  const r = await A.signInWithOtp({ email, options: { shouldCreateUser: false } });
-  if (r.error) { toast(authError(r.error)); return; }
-  S.pending = { email, purpose: 'login' }; go('/codigo', true);
+  if (!data.session) throw new Error('Conta criada. Confirme seu e-mail e depois entre.');
 }
 
 /* ---------- library (Supabase) ---------- */
@@ -315,55 +272,17 @@ function vLogin(v, signup) {
   v.innerHTML = authShell(`<p class="muted">${signup ? 'Crie sua conta grátis' : 'Bem-vindo de volta'}</p>
   <form id="af"><input class="field" id="em" type="email" placeholder="E-mail" autocomplete="email" required><input class="field" id="pw" type="password" placeholder="Senha (8+ caracteres)" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required>
   <p class="err" id="er"></p><button class="btn" id="go">${signup ? 'Criar conta' : 'Entrar'}</button></form>
-  <p class="muted small" style="margin:14px 0">ou</p><button class="btn alt" style="width:100%" id="gg"><b style="background:#fff;color:#4285F4;border-radius:50%;width:22px;height:22px;display:inline-grid;place-items:center">G</b> Continuar com Google</button>
-  <p style="margin-top:16px">${signup ? `<a class="link" href="${BASE}entrar" data-go="/entrar">Já tenho conta • Entrar</a>` : `<a class="link" href="${BASE}recuperar" data-go="/recuperar">Esqueci minha senha</a><br><br><a class="link" href="${BASE}cadastro" data-go="/cadastro">Não tem conta? Criar agora</a>`}</p>
-  <p class="muted small" style="margin-top:14px">Por segurança, enviamos um código de 6 dígitos para o seu e-mail em cada entrada.</p>
+  <p style="margin-top:16px">${signup ? `<a class="link" href="${BASE}entrar" data-go="/entrar">Já tenho conta • Entrar</a>` : `<a class="link" href="${BASE}cadastro" data-go="/cadastro">Não tem conta? Criar agora</a>`}</p>
   <p class="small" style="margin-top:10px"><a class="link" href="${BASE}baixar" data-go="/baixar">Baixar o app Android</a></p>`);
   $('#af').addEventListener('submit', async (e) => {
     e.preventDefault(); const b = $('#go'); b.disabled = true; $('#er').textContent = '';
-    try { await (signup ? signUp : passwordLogin)($('#em').value.trim(), $('#pw').value); go('/codigo'); }
+    try { await (signup ? signUp : passwordLogin)($('#em').value.trim(), $('#pw').value); go('/', true); }
     catch (x) { $('#er').textContent = authError(x); b.disabled = false; }
   });
-  $('#gg').addEventListener('click', async () => { try { await googleLogin(); } catch (x) { $('#er').textContent = authError(x); } });
 }
-function vForgot(v) {
-  v.innerHTML = authShell(`<p class="muted">Recuperar senha</p><form id="af"><input class="field" id="em" type="email" placeholder="Seu e-mail" required><p class="err" id="er"></p><button class="btn" id="go">Enviar código</button></form><p style="margin-top:16px"><a class="link" href="${BASE}entrar" data-go="/entrar">← Voltar</a></p>`);
-  $('#af').addEventListener('submit', async (e) => { e.preventDefault(); $('#go').disabled = true; try { await forgot($('#em').value.trim()); go('/codigo'); } catch (x) { $('#er').textContent = authError(x); $('#go').disabled = false; } });
-}
-let cdT;
-function vCode(v) {
-  const p = S.pending; if (!p) { go('/entrar', true); return; }
-  const title = { login: 'Código de segurança', signup: 'Confirme seu e-mail', recovery: 'Recuperar senha' }[p.purpose];
-  v.innerHTML = authShell(`<p class="muted"><b style="color:var(--text);font-size:20px">${title}</b><br>Enviamos um código de 6 dígitos para<br>${esc(p.email)}</p>
-  <form id="af"><input class="field code" id="cd" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"><p class="err" id="er"></p><button class="btn" id="go" disabled>Confirmar</button></form>
-  <p style="margin-top:14px"><button class="link" id="rs" disabled>Reenviar em 45s</button></p><p style="margin-top:10px"><a class="link" id="bk" href="${BASE}entrar">← Voltar</a></p>`);
-  const cd = $('#cd'); cd.focus();
-  let left = 45; clearInterval(cdT);
-  const tick = () => { const b = $('#rs'); if (!b) { clearInterval(cdT); return; } if (left > 0) { b.textContent = `Reenviar em ${left}s`; b.disabled = true; left--; } else { b.textContent = 'Reenviar código'; b.disabled = false; clearInterval(cdT); } };
-  tick(); cdT = setInterval(tick, 1000);
-  const submit = async () => {
-    if (cd.value.length < 6) return; $('#go').disabled = true; $('#er').textContent = '';
-    try { await verifyCode(cd.value); go(S.recovery ? '/nova-senha' : '/', true); }
-    catch (x) { $('#er').textContent = authError(x); cd.value = ''; }
-  };
-  cd.addEventListener('input', () => { cd.value = cd.value.replace(/\D/g, '').slice(0, 6); $('#go').disabled = cd.value.length < 6; if (cd.value.length === 6) submit(); });
-  $('#af').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
-  $('#rs').addEventListener('click', async () => { try { await resendCode(); $('#er').className = 'err ok'; $('#er').textContent = 'Novo código enviado! Confira também o spam.'; left = 45; clearInterval(cdT); tick(); cdT = setInterval(tick, 1000); } catch (x) { $('#er').className = 'err'; $('#er').textContent = authError(x); } });
-  $('#bk').addEventListener('click', (e) => { e.preventDefault(); S.pending = null; S.recovery = false; go('/entrar'); });
-}
-function vNewPass(v) {
-  v.innerHTML = authShell(`<p class="muted">Criar nova senha</p><form id="af"><input class="field" id="p1" type="password" placeholder="Nova senha (8+)" minlength="8" required><input class="field" id="p2" type="password" placeholder="Repita a senha" minlength="8" required><p class="err" id="er"></p><button class="btn" id="go">Salvar senha</button></form>`);
-  $('#af').addEventListener('submit', async (e) => {
-    e.preventDefault(); if ($('#p1').value !== $('#p2').value) { $('#er').textContent = 'As senhas não são iguais.'; return; }
-    $('#go').disabled = true; const { error } = await A.updateUser({ password: $('#p1').value });
-    if (error) { $('#er').textContent = authError(error); $('#go').disabled = false; return; }
-    S.recovery = false; toast('Senha alterada com sucesso!'); go('/', true);
-  });
-}
-
 /* ---------- router ---------- */
 const PUBLIC = ['/baixar', '/novidades'];
-const AUTHPAGES = ['/entrar', '/cadastro', '/recuperar', '/codigo', '/nova-senha'];
+const AUTHPAGES = ['/entrar', '/cadastro'];
 function path() { let p = location.pathname.slice(BASE.length - 1).replace(/\/+$/, ''); return p || '/'; }
 function go(p, replace) { const url = BASE + p.replace(/^\//, ''); (replace ? history.replaceState : history.pushState).call(history, {}, '', url); render(); window.scrollTo(0, 0); }
 const NAV = [['/', 'Início', 'home'], ['/buscar', 'Buscar', 'search'], ['/biblioteca', 'Biblioteca', 'lib'], ['/perfil', 'Perfil', 'user']];
@@ -376,10 +295,8 @@ function chrome(p) {
 async function render() {
   const p = path(); const v = $('#view');
   const authPage = AUTHPAGES.includes(p);
-  if (S.recovery && S.user && p !== '/nova-senha') return go('/nova-senha', true);
-  if (S.pending && p !== '/codigo') return go('/codigo', true);
   if (!S.user && !authPage && !PUBLIC.includes(p)) return go('/entrar', true);
-  if (S.user && authPage && p !== '/nova-senha' && p !== '/codigo') return go('/', true);
+  if (S.user && authPage) return go('/', true);
   const full = authPage || !S.user;
   $('#side').hidden = full; $('#tabs').hidden = full; $('#app').style.display = full && authPage ? 'block' : '';
   $('#app').style.gridTemplateColumns = full ? '1fr' : '';
@@ -390,9 +307,6 @@ async function render() {
   document.title = 'Master Music';
   if (p === '/entrar') return vLogin(v, false);
   if (p === '/cadastro') return vLogin(v, true);
-  if (p === '/recuperar') return vForgot(v);
-  if (p === '/codigo') return vCode(v);
-  if (p === '/nova-senha') return vNewPass(v);
   if (p === '/baixar') return vDownload(v);
   if (p === '/novidades') return vChangelog(v);
   if (p === '/') return vHome(v);
@@ -454,13 +368,10 @@ window.addEventListener('popstate', render);
   A.onAuthStateChange((ev, session) => {
     S.user = session ? session.user : null;
     setTimeout(async () => {
-      if (ev === 'PASSWORD_RECOVERY') S.recovery = true;
-      if (ev === 'SIGNED_IN') await handleOAuthReturn();
       if (S.user) loadFavs();
       render();
     }, 0);
   });
-  await handleOAuthReturn();
   render();
 })();
 })();

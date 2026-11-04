@@ -22,9 +22,9 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <audio id="audio" preload="none"></audio>
 <noscript><p style="padding:24px">Ative o JavaScript para usar o Master Music.</p></noscript>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
-<script src="app.js"></script>
-<script>if(!window.supabase){document.getElementById("view").innerHTML="<p style=\"padding:24px\">Não foi possível carregar o Master Music. Verifique sua internet e recarregue a página.</p>"}</script>
+<script>window.addEventListener("error",function(e){var v=document.getElementById("view");if(v&&!v.children.length)v.innerHTML="<p style=\"padding:24px\">Erro ao carregar: "+String(e.message).replace(/</g,"&lt;")+"</p>"})</script>
+<script src="lite.js?v=2"></script>
+<script src="app.js?v=2"></script>
+
 </body>
 </html>
