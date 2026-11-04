@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config.dart';
+import '../models/track.dart';
 import '../services/audius_service.dart';
 import '../services/auth_service.dart';
 import '../services/player_service.dart';
@@ -121,19 +122,15 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
     }
   }
 
-  Future<void> _playMatch(ExtTrack t) async {
+  Future<void> _playMatch(List<ExtTrack> list, int i) async {
     final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(SnackBar(content: Text('Procurando "${t.name}" no catálogo livre...')));
-    try {
-      final r = await Audius.search('${t.name} ${t.artist}', limit: 5);
-      messenger.hideCurrentSnackBar();
-      if (r.isEmpty) {
-        messenger.showSnackBar(const SnackBar(content: Text('Essa faixa não está no catálogo livre.')));
-        return;
-      }
-      await PlayerService.I.playOne(r.first);
-    } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('Falha na busca.')));
+    messenger.showSnackBar(SnackBar(content: Text('Procurando "${list[i].name}" no catálogo livre...')));
+    final cache = <int, Track?>{};
+    Future<Track?> resolve(int k) async => cache.containsKey(k) ? cache[k] : cache[k] = await Audius.match(list[k].name, list[k].artist);
+    final ok = await PlayerService.I.playResolving(list.length, i, resolve);
+    messenger.hideCurrentSnackBar();
+    if (!ok && mounted) {
+      messenger.showSnackBar(const SnackBar(content: Text('Essa faixa não está no catálogo livre (o Audius tem poucas músicas famosas).')));
     }
   }
 
@@ -418,7 +415,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
 class _ExtTracks extends StatelessWidget {
   final String title;
   final Future<List<ExtTrack>> Function() loader;
-  final Future<void> Function(ExtTrack) onPlay;
+  final Future<void> Function(List<ExtTrack>, int) onPlay;
   const _ExtTracks({required this.title, required this.loader, required this.onPlay});
 
   @override
@@ -442,7 +439,7 @@ class _ExtTracks extends StatelessWidget {
                 title: Text(list[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(list[i].artist, maxLines: 1, style: const TextStyle(color: C.muted)),
                 trailing: const Icon(Icons.play_circle_fill_rounded, color: C.pink),
-                onTap: () => onPlay(list[i]),
+                onTap: () => onPlay(list, i),
               ),
             ),
           );

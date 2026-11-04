@@ -44,6 +44,7 @@ class PlayerService {
 
   Future<void> playQueue(List<Track> tracks, int index) async {
     if (tracks.isEmpty) return;
+    _gen++;
     error.value = null;
     queue = List.of(tracks);
     current.value = queue[index];
@@ -60,6 +61,56 @@ class PlayerService {
   }
 
   Future<void> playOne(Track t) => playQueue([t], 0);
+
+  int _gen = 0;
+
+  /// Toca uma lista vinda de outro serviço: começa pela faixa tocada e vai achando as outras
+  /// em segundo plano, para a notificação ter "próxima" e "anterior".
+  Future<bool> playResolving(int count, int index, Future<Track?> Function(int) resolve) async {
+    final gen = ++_gen;
+    Track? first;
+    var start = index;
+    for (var i = index; i < count && first == null; i++) {
+      first = await resolve(i);
+      if (gen != _gen) return false;
+      start = i;
+    }
+    if (first == null) {
+      error.value = 'Essas faixas não estão no catálogo livre.';
+      return false;
+    }
+    error.value = null;
+    queue = [first];
+    current.value = first;
+    final concat = ConcatenatingAudioSource(children: [_src(first)]);
+    try {
+      await player.setAudioSource(concat);
+      unawaited(player.play());
+    } catch (_) {
+      error.value = 'Não foi possível tocar essa faixa. Verifique a internet.';
+      return false;
+    }
+    unawaited(() async {
+      final seen = <String>{first!.id};
+      for (var i = start + 1; i < count; i++) {
+        final t = await resolve(i);
+        if (gen != _gen) return;
+        if (t == null || !seen.add(t.id)) continue;
+        queue.add(t);
+        await concat.add(_src(t));
+      }
+      var pos = 0;
+      for (var i = 0; i < index; i++) {
+        final t = await resolve(i);
+        if (gen != _gen) return;
+        if (t == null || !seen.add(t.id)) continue;
+        queue.insert(pos, t);
+        await concat.insert(pos, _src(t));
+        pos++;
+      }
+    }());
+    return true;
+  }
 
   void toggle() => player.playing ? player.pause() : player.play();
 

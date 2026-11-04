@@ -97,6 +97,7 @@ const dbList = async (table, extra) => { let q = sb.from(table).select(); q = ex
 /* ---------- player ---------- */
 function curTrack() { return S.queue[S.idx] || null; }
 function playQueue(list, i) {
+  spGen++;
   S.queue = list.slice(); S.idx = i; load(true);
 }
 function load(autoplay) {
@@ -360,14 +361,27 @@ async function spOpen(id) {
     out.innerHTML = '<h2>Faixas</h2>' + (l.length ? l.map((t, i) => `<div class="row" data-sp="${i}">${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}<div class="t"><b>${esc(t.name)}</b><span>${esc(t.artist)}</span></div></div>`).join('') : '<p class="muted">Nenhuma faixa.</p>');
   } catch (e) { out.innerHTML = `<p class="err">${esc(spMsg(e))}</p>`; }
 }
-async function spPlay(i) {
-  const t = (S.sp || [])[i]; if (!t) return;
-  toast('Procurando "' + t.name + '" no catálogo livre...');
+let spGen = 0;
+async function spMatch(t) {
+  const n = t.name.toLowerCase();
   try {
-    const r = await audiusList('/tracks/search', { query: t.name + ' ' + t.artist, limit: 5 });
-    if (!r.length) { toast('Essa faixa não está no catálogo livre.'); return; }
-    playQueue(r, 0);
-  } catch (e) { toast('Falha na busca. Verifique sua internet.'); }
+    let r = await audiusList('/tracks/search', { query: t.name + ' ' + t.artist, limit: 5 });
+    if (r.length) return r.find((x) => x.title.toLowerCase().includes(n)) || r[0];
+    r = await audiusList('/tracks/search', { query: t.name, limit: 8 });
+    return r.find((x) => x.title.toLowerCase().includes(n)) || null;
+  } catch (e) { return null; }
+}
+async function spPlay(i) {
+  const list = S.sp || []; if (!list[i]) return;
+  const gen = ++spGen; toast('Procurando "' + list[i].name + '" no catálogo livre...');
+  let first = null, start = i;
+  for (let k = i; k < list.length && !first; k++) { first = await spMatch(list[k]); if (gen !== spGen) return; start = k; }
+  if (!first) { toast('Essa faixa não está no catálogo livre (o Audius tem poucas músicas famosas).'); return; }
+  playQueue([first], 0); const g2 = spGen;
+  const seen = new Set([first.id]);
+  for (let k = start + 1; k < list.length; k++) { const t = await spMatch(list[k]); if (g2 !== spGen) return; if (t && !seen.has(t.id)) { seen.add(t.id); S.queue.push(t); } }
+  let pos = 0;
+  for (let k = 0; k < i; k++) { const t = await spMatch(list[k]); if (g2 !== spGen) return; if (t && !seen.has(t.id)) { seen.add(t.id); S.queue.splice(pos, 0, t); S.idx++; pos++; } }
 }
 
 /* ---------- Spotify por link (playlist/álbum/faixa pública, sem Premium) ---------- */

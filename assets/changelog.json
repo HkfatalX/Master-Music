@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.2.2",
+    "date": "04/11/2026",
+    "title": "Próxima e anterior nas músicas do Spotify",
+    "added": [],
+    "improved": [
+      "Músicas importadas do Spotify agora formam uma fila: a notificação tem próxima e anterior",
+      "Busca mais esperta no catálogo livre"
+    ],
+    "fixed": [
+      "Faixa importada não tocava quando o nome do artista atrapalhava a busca"
+    ]
+  },
+  {
     "version": "1.2.1",
     "date": "04/11/2026",
     "title": "Spotify por link (sem Premium)",

@@ -30,4 +30,20 @@ class Audius {
 
   static Future<List<Track>> search(String query, {int limit = 30}) =>
       _list('/tracks/search', {'query': query, 'limit': '$limit'});
+
+  /// Acha no catálogo livre a faixa que corresponde a (nome, artista) vindos de outro serviço.
+  static Future<Track?> match(String name, String artist) async {
+    final n = name.toLowerCase();
+    try {
+      final r = await search('$name $artist', limit: 5);
+      if (r.isNotEmpty) {
+        return r.firstWhere((t) => t.title.toLowerCase().contains(n), orElse: () => r.first);
+      }
+      final r2 = await search(name, limit: 8);
+      for (final t in r2) {
+        if (t.title.toLowerCase().contains(n)) return t;
+      }
+    } catch (_) {}
+    return null;
+  }
 }
