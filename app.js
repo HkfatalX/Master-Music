@@ -50,7 +50,7 @@ function authError(e) {
   if (m.includes('already')) return 'Esse e-mail já tem conta. Tente entrar.';
   if (m.includes('weak') || m.includes('password should')) return 'Senha fraca. Use 8+ caracteres.';
   if (m.includes('same password') || m.includes('different from the old')) return 'Escolha uma senha diferente da anterior.';
-  if (m.includes('provider') && m.includes('enabled')) return 'Login com Google ainda não foi ativado no servidor.';
+  if (m.includes('provider') && m.includes('enabled')) return 'O login com Google ainda não foi ativado neste servidor. Use e-mail e senha por enquanto.';
   if (m.includes('fetch') || m.includes('network')) return 'Sem conexão com a internet.';
   return 'Algo deu errado. Tente de novo.';
 }
@@ -102,7 +102,11 @@ async function resendCode() {
   else r = await A.resetPasswordForEmail(email);
   if (r.error) throw r.error;
 }
+async function googleEnabled() {
+  try { const r = await fetch(CFG.url + '/auth/v1/settings', { headers: { apikey: CFG.key } }); const j = await r.json(); return !!(j.external && j.external.google); } catch { return true; }
+}
 async function googleLogin() {
+  if (!(await googleEnabled())) throw new Error('Unsupported provider: provider is not enabled');
   sessionStorage.setItem('mm_oauth', 'login');
   const { error } = await A.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + BASE } });
   if (error) { sessionStorage.removeItem('mm_oauth'); throw error; }
@@ -299,7 +303,7 @@ async function vDownload(v) {
 async function vChangelog(v) {
   v.innerHTML = `<h1>Novidades e versões</h1><div id="cl" style="margin-top:16px">${skel(3)}</div>`;
   try {
-    const list = await (await fetch(BASE + 'changelog.json?_=' + Date.now())).json();
+    const list = await (await fetch(BASE + 'assets/changelog.json?_=' + Date.now())).json();
     const grp = (t, c, a) => (a && a.length ? `<h4><strong class="${c}">${t}</strong></h4><ul>${a.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
     $('#cl').innerHTML = list.map((e, i) => `<div class="entry ${i === 0 ? 'cur' : ''}"><span class="tag">v${esc(e.version)}</span> <span class="muted small" style="float:right">${esc(e.date)}</span><h3 style="margin-top:12px">${esc(e.title)}</h3>${grp('Adicionado', 'a', e.added)}${grp('Melhorado', 'i', e.improved)}${grp('Corrigido', 'f', e.fixed)}</div>`).join('');
   } catch { $('#cl').innerHTML = errBox('Não foi possível carregar as novidades.'); }
@@ -378,6 +382,7 @@ async function render() {
   if (S.user && authPage && p !== '/nova-senha' && p !== '/codigo') return go('/', true);
   const full = authPage || !S.user;
   $('#side').hidden = full; $('#tabs').hidden = full; $('#app').style.display = full && authPage ? 'block' : '';
+  $('#app').style.gridTemplateColumns = full ? '1fr' : '';
   $('#main').style.padding = full && authPage ? '0' : '';
   if (!full) chrome(p);
   renderPlayer();

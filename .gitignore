@@ -6,4 +6,3 @@
 pubspec.lock
 *.iml
 .idea/
-site/vendor/supabase.js

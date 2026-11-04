@@ -31,6 +31,7 @@ class YouTubeService {
   Future<bool> isConnected() async => (await _token()) != null;
 
   Future<void> connect() async {
+    await AuthFlow.ensureGoogleEnabled();
     final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
     await secureStore.write(key: 'oauth_pending', value: 'yt:$uid');
     await Supabase.instance.client.auth.signInWithOAuth(

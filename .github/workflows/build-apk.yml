@@ -3,6 +3,15 @@ name: Build APK
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'index.html'
+      - '404.html'
+      - 'style.css'
+      - 'app.js'
+      - 'spotify-callback.html'
+      - 'manifest.webmanifest'
+      - 'img/**'
+      - 'README.md'
   workflow_dispatch:
 
 permissions:

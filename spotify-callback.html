@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Voltando para o Master Music…</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0714;color:#F5F3FF;font-family:system-ui,sans-serif;text-align:center;padding:24px}
+img{width:96px;height:96px;border-radius:28px;box-shadow:0 14px 40px rgba(139,92,246,.5)}
+a{display:inline-block;margin-top:18px;padding:14px 26px;border-radius:16px;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;font-weight:800;text-decoration:none}
+p{color:#A79BC4}
+</style>
+</head>
+<body>
+<div>
+  <img src="img/logo-192.png" alt="Master Music">
+  <h2>Voltando para o Master Music…</h2>
+  <p id="m">Se o app não abrir sozinho, toque no botão.</p>
+  <a id="open" href="#">Abrir o Master Music</a>
+</div>
+<script>
+(function () {
+  var target = 'mastermusic://spotify-callback' + location.search;
+  document.getElementById('open').href = target;
+  setTimeout(function () { location.href = target; }, 150);
+})();
+</script>
+</body>
+</html>

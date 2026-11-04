@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config.dart';
 import '../services/audius_service.dart';
+import '../services/auth_service.dart';
 import '../services/player_service.dart';
 import '../services/spotify_service.dart';
 import '../services/youtube_service.dart';
@@ -108,8 +109,8 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> with WidgetsBindi
   Future<void> _connectYt() async {
     try {
       await YouTubeService.I.connect();
-    } catch (_) {
-      setState(() => _ytError = 'Não foi possível abrir o login do Google. O Google precisa estar ativado no servidor.');
+    } catch (e) {
+      if (mounted) setState(() => _ytError = authError(e));
     }
   }
 

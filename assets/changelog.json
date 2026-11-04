@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.1.1",
+    "date": "03/11/2026",
+    "title": "Correções do Spotify, Google e site",
+    "added": [],
+    "improved": [
+      "Aviso claro quando o login com Google ainda não foi ativado no servidor, sem abrir página de erro"
+    ],
+    "fixed": [
+      "Conexão com o Spotify agora usa endereço HTTPS aceito pelo Spotify",
+      "Site refeito e corrigido (abria o README do repositório)"
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "03/11/2026",
     "title": "Site, login por código e novo visual",

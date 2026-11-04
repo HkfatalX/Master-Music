@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,7 +23,7 @@ String authError(Object e) {
   if (m.contains('already')) return 'Esse e-mail já tem conta. Tente entrar.';
   if (m.contains('weak') || m.contains('password should')) return 'Senha fraca. Use 8+ caracteres.';
   if (m.contains('same password') || m.contains('different from the old')) return 'Escolha uma senha diferente da anterior.';
-  if (m.contains('provider') && m.contains('enabled')) return 'Login com Google ainda não foi ativado no servidor.';
+  if (m.contains('provider') && m.contains('enabled')) return 'O login com Google ainda não foi ativado neste servidor. Use e-mail e senha por enquanto.';
   if (m.contains('socket') || m.contains('network') || m.contains('host') || m.contains('failed host')) {
     return 'Sem conexão com a internet.';
   }
@@ -140,7 +142,26 @@ class AuthFlow extends ChangeNotifier {
     endRecovery();
   }
 
+  /// Confere no servidor se o login com Google está ativado (evita abrir uma página de erro).
+  static Future<void> ensureGoogleEnabled() async {
+    try {
+      final r = await http
+          .get(Uri.parse('${Config.supabaseUrl}/auth/v1/settings'), headers: {'apikey': Config.supabaseKey})
+          .timeout(const Duration(seconds: 10));
+      if (r.statusCode == 200) {
+        final j = jsonDecode(r.body);
+        final ext = j is Map ? j['external'] : null;
+        if (ext is Map && ext['google'] != true) {
+          throw Exception('Unsupported provider: provider is not enabled');
+        }
+      }
+    } on FormatException {
+      return;
+    }
+  }
+
   Future<void> googleLogin() async {
+    await ensureGoogleEnabled();
     await secureStore.write(key: 'oauth_pending', value: 'login');
     await _a.signInWithOAuth(
       OAuthProvider.google,
