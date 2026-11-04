@@ -6,7 +6,8 @@ class Config {
   static const repo = 'HkfatalX/master-music';
   static const appName = 'Master Music';
   static const authRedirect = 'mastermusic-auth://callback';
-  static const spotifyRedirect = 'https://hkfatalx.github.io/Master-Music/spotify-callback.html';
+  static const spotifyPort = 43821;
+  static const spotifyRedirect = 'http://127.0.0.1:43821/callback';
   static const siteUrl = 'https://hkfatalx.github.io/Master-Music/';
   static const youtubeScope = 'https://www.googleapis.com/auth/youtube.readonly';
 }

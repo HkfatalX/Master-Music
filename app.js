@@ -31,6 +31,7 @@ const ic = {
   rep: '<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2z"/></svg>',
   heart: '<svg viewBox="0 0 24 24"><path d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5A5.5 5.5 0 0 1 7.5 3c1.7 0 3.4.8 4.5 2.1A6 6 0 0 1 16.5 3 5.5 5.5 0 0 1 22 8.5c0 3.8-3.4 6.9-8.6 11.5z"/></svg>',
   note: '<svg viewBox="0 0 24 24"><path d="M12 3v10.6A4 4 0 1 0 14 17V7h4V3z"/></svg>',
+  link: '<svg viewBox="0 0 24 24"><path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12zM8 13h8v-2H8zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10z"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>',
 };
 const S = { user: null, favs: new Set(), queue: [], idx: -1, shuffle: false, repeat: 0, pending: null, recovery: false, genre: '', cache: {} };
@@ -222,7 +223,7 @@ async function vPlaylist(v, id) {
 }
 function vProfile(v) {
   v.innerHTML = `<h1>Perfil</h1><div class="hero" style="margin-top:16px"><div><p style="opacity:.8">Sua conta</p><h1 style="font-size:22px;word-break:break-all">${esc(S.user.email)}</h1></div><img src="img/logo-512.png" alt=""></div>
-  <div class="box" style="margin-top:16px"><p><b>Segurança:</b> <span class="muted">cada entrada pede um código de 6 dígitos enviado ao seu e-mail. Seus dados ficam na sua conta e só você vê.</span></p></div>
+  <div class="box" style="margin-top:16px"><p><b>Privacidade:</b> <span class="muted">seus favoritos, playlists e histórico ficam na sua conta e só você vê. O app Android é opcional: tudo funciona aqui no site.</span></p></div>
   <p style="margin-top:18px"><a class="btn alt" href="${BASE}baixar" data-go="/baixar">Baixar o app Android</a> <a class="btn alt" href="${BASE}novidades" data-go="/novidades">Novidades e versões</a> <button class="btn" data-act="logout">Sair da conta</button></p>`;
 }
 async function vNow(v) {
@@ -280,12 +281,100 @@ function vLogin(v, signup) {
     catch (x) { $('#er').textContent = authError(x); b.disabled = false; }
   });
 }
+
+/* ---------- Conexões: Spotify (OAuth PKCE direto no navegador) ---------- */
+const SP = { id: '1d4495d665da45ca80eb9d50d0f1745a', scopes: 'user-library-read playlist-read-private user-read-private', key: 'mm_sp_v1', pk: 'mm_sp_pkce' };
+const spRedirect = () => location.origin + BASE + 'conexoes';
+const spLoad = () => { try { return JSON.parse(localStorage.getItem(SP.key) || 'null'); } catch (e) { return null; } };
+const spSave = (t) => { try { t ? localStorage.setItem(SP.key, JSON.stringify(t)) : localStorage.removeItem(SP.key); } catch (e) {} };
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const rnd = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return b64u(a).slice(0, n); };
+async function spConnect() {
+  const verifier = rnd(96), state = rnd(24);
+  const challenge = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  try { localStorage.setItem(SP.pk, JSON.stringify({ verifier, state })); } catch (e) { throw new Error('Seu navegador bloqueou o armazenamento. Libere cookies/dados do site.'); }
+  const u = new URL('https://accounts.spotify.com/authorize');
+  Object.entries({ response_type: 'code', client_id: SP.id, redirect_uri: spRedirect(), scope: SP.scopes, state, code_challenge_method: 'S256', code_challenge: challenge }).forEach(([k, v]) => u.searchParams.set(k, v));
+  location.href = u.toString();
+}
+async function spToken(body) {
+  const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: SP.id, ...body }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error_description || j.error || 'Erro ' + r.status);
+  return j;
+}
+async function spHandleReturn() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return null;
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(SP.pk) || 'null'); localStorage.removeItem(SP.pk); } catch (e) {}
+  history.replaceState({}, '', BASE + 'conexoes');
+  if (q.get('error')) return 'O Spotify recusou ou cancelou a conexão (' + q.get('error') + ').';
+  if (!saved || saved.state !== q.get('state')) return 'Resposta inválida do Spotify. Tente conectar de novo.';
+  try {
+    const j = await spToken({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: spRedirect(), code_verifier: saved.verifier });
+    spSave({ access: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
+    return null;
+  } catch (e) { return 'Falha ao conectar: ' + e.message; }
+}
+async function spAccess() {
+  const t = spLoad(); if (!t) throw new Error('desconectado');
+  if (t.exp - 60000 > Date.now()) return t.access;
+  const j = await spToken({ grant_type: 'refresh_token', refresh_token: t.refresh });
+  const n = { access: j.access_token, refresh: j.refresh_token || t.refresh, exp: Date.now() + (j.expires_in || 3600) * 1000 }; spSave(n); return n.access;
+}
+async function spGet(path) {
+  const r = await fetch('https://api.spotify.com/v1' + path, { headers: { Authorization: 'Bearer ' + (await spAccess()) } });
+  if (r.status === 403) throw new Error('premium');
+  if (!r.ok) throw new Error('Spotify ' + r.status);
+  return r.json();
+}
+const spTrack = (t) => t && t.name ? { name: t.name, artist: (t.artists && t.artists[0] && t.artists[0].name) || '', art: (t.album && t.album.images && t.album.images[0] && t.album.images[0].url) || null } : null;
+const spMsg = (e) => String(e.message) === 'premium' ? 'O Spotify só libera os dados dessa conta para apps de desenvolvedor com Premium. Se sua conta é grátis, isso é limite do Spotify, não do Master Music.' : 'Não foi possível ler o Spotify agora. Tente reconectar.';
+async function vConexoes(v) {
+  v.innerHTML = `<h1>Conexões</h1><p class="muted" style="margin:6px 0 16px">Use suas playlists de outros serviços no Master Music. A música toca pelo catálogo livre.</p><div id="cx">${skel(2)}</div>`;
+  const err = await spHandleReturn();
+  const box = $('#cx'); if (!box) return;
+  const t = spLoad();
+  const head = `<div class="row" style="cursor:default"><div class="ph" style="width:52px;height:52px;border-radius:14px;flex:none;background:#1DB954">${ic.note}</div><div class="t"><b>Spotify</b><span>${t ? 'Conectado' : 'Não conectado'}</span></div></div>`;
+  if (!t) {
+    box.innerHTML = `<div class="box">${head}<p class="muted small" style="margin:12px 0">Login oficial no site do Spotify. O Master Music só lê suas playlists e curtidas.</p>${err ? `<p class="err">${esc(err)}</p>` : ''}<button class="btn" id="spc">Conectar ao Spotify</button>
+    <details style="margin-top:14px"><summary class="muted small">Deu erro de redirecionamento?</summary><p class="muted small" style="margin-top:8px">No painel do Spotify (Redirect URIs) adicione exatamente:<br><code style="word-break:break-all">${esc(spRedirect())}</code><br>e toque em Save. A API do Spotify pode exigir conta Premium para apps de desenvolvedor.</p></details></div>`;
+    $('#spc').addEventListener('click', async (e) => { e.target.disabled = true; try { await spConnect(); } catch (x) { toast(x.message); e.target.disabled = false; } });
+    return;
+  }
+  box.innerHTML = `<div class="box">${head}<p style="margin:12px 0"><button class="btn alt" id="spd">Desconectar</button></p><div id="spl">${skel(4)}</div><div id="spt"></div></div>`;
+  $('#spd').addEventListener('click', () => { spSave(null); render(); });
+  try {
+    const pl = await spGet('/me/playlists?limit=50');
+    $('#spl').innerHTML = `<a class="row" data-sppl="liked"><div class="ph" style="width:52px;height:52px;border-radius:12px;flex:none">${ic.heart}</div><div class="t"><b>Músicas curtidas</b></div></a>` + (pl.items || []).filter(Boolean).map((p) => `<a class="row" data-sppl="${esc(p.id)}"><div class="ph" style="width:52px;height:52px;border-radius:12px;flex:none">${ic.lib}</div><div class="t"><b>${esc(p.name)}</b><span>${p.tracks && p.tracks.total != null ? p.tracks.total + ' faixas' : ''}</span></div></a>`).join('');
+  } catch (e) { $('#spl').innerHTML = `<p class="err">${esc(spMsg(e))}</p><button class="btn" id="spr">Reconectar</button>`; $('#spr').addEventListener('click', () => { spSave(null); spConnect(); }); }
+}
+async function spOpen(id) {
+  const out = $('#spt'); if (!out) return; out.innerHTML = '<h2>Faixas</h2>' + skel(5);
+  try {
+    let items;
+    if (id === 'liked') items = (await spGet('/me/tracks?limit=50')).items.map((i) => spTrack(i.track));
+    else { let j; try { j = await spGet('/playlists/' + encodeURIComponent(id) + '/tracks?limit=100'); } catch (e) { j = await spGet('/playlists/' + encodeURIComponent(id) + '/items?limit=100'); } items = j.items.map((i) => spTrack(i.track || i.item)); }
+    const l = items.filter(Boolean); S.sp = l;
+    out.innerHTML = '<h2>Faixas</h2>' + (l.length ? l.map((t, i) => `<div class="row" data-sp="${i}">${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}<div class="t"><b>${esc(t.name)}</b><span>${esc(t.artist)}</span></div></div>`).join('') : '<p class="muted">Nenhuma faixa.</p>');
+  } catch (e) { out.innerHTML = `<p class="err">${esc(spMsg(e))}</p>`; }
+}
+async function spPlay(i) {
+  const t = (S.sp || [])[i]; if (!t) return;
+  toast('Procurando "' + t.name + '" no catálogo livre...');
+  try {
+    const r = await audiusList('/tracks/search', { query: t.name + ' ' + t.artist, limit: 5 });
+    if (!r.length) { toast('Essa faixa não está no catálogo livre.'); return; }
+    playQueue(r, 0);
+  } catch (e) { toast('Falha na busca. Verifique sua internet.'); }
+}
+
 /* ---------- router ---------- */
 const PUBLIC = ['/baixar', '/novidades'];
 const AUTHPAGES = ['/entrar', '/cadastro'];
 function path() { let p = location.pathname.slice(BASE.length - 1).replace(/\/+$/, ''); return p || '/'; }
 function go(p, replace) { const url = BASE + p.replace(/^\//, ''); (replace ? history.replaceState : history.pushState).call(history, {}, '', url); render(); window.scrollTo(0, 0); }
-const NAV = [['/', 'Início', 'home'], ['/buscar', 'Buscar', 'search'], ['/biblioteca', 'Biblioteca', 'lib'], ['/perfil', 'Perfil', 'user']];
+const NAV = [['/', 'Início', 'home'], ['/buscar', 'Buscar', 'search'], ['/biblioteca', 'Biblioteca', 'lib'], ['/conexoes', 'Conexões', 'link'], ['/perfil', 'Perfil', 'user']];
 function chrome(p) {
   const on = (h) => (h === '/' ? p === '/' : p.startsWith(h));
   const links = NAV.map(([h, n, i]) => `<a class="nl ${on(h) ? 'on' : ''}" href="${BASE}${h.slice(1)}" data-go="${h}">${ic[i]}${n}</a>`).join('');
@@ -311,6 +400,7 @@ async function render() {
   if (p === '/novidades') return vChangelog(v);
   if (p === '/') return vHome(v);
   if (p === '/buscar') return vSearch(v);
+  if (p === '/conexoes') return vConexoes(v);
   if (p === '/perfil') return vProfile(v);
   if (p === '/tocando') return vNow(v);
   if (p === '/biblioteca') return go('/biblioteca/favoritos', true);
@@ -344,6 +434,8 @@ document.addEventListener('click', async (e) => {
     else if (act === 'delpl') { if (confirm('Apagar playlist?')) { await sb.from('mm_playlists').delete().eq('id', b.dataset.id); go('/biblioteca/playlists'); } }
     return;
   }
+  const sl = e.target.closest('[data-sppl]'); if (sl) { spOpen(sl.dataset.sppl); return; }
+  const sp = e.target.closest('[data-sp]'); if (sp) { spPlay(Number(sp.dataset.sp)); return; }
   const r = e.target.closest('[data-play]'); if (r) playQueue(listOf(r), Number(r.dataset.play));
 });
 async function addToPlaylist(t) {
