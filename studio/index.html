@@ -31,6 +31,9 @@ a{color:var(--p)}
 
 <div class="card"><div id="grid" class="grid"></div></div>
 
+<div class="card"><b>Ou envie uma música pronta</b>
+<div class="row" style="margin-top:8px"><button id="imp">📁 Escolher arquivo (PC ou celular)</button><input id="imf" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.webm" hidden><span id="is" class="m">mp3, m4a, wav, ogg, flac, webm · até 15 MB</span></div></div>
+
 <div class="card">
 <div class="row"><button id="rec">⏺ Gravar</button><span id="rs" class="m">Grave alguns compassos (máx. 2 min) e depois publique.</span></div>
 <audio id="pv" controls style="width:100%;margin-top:10px;display:none"></audio>
@@ -117,6 +120,21 @@ $('#rec').onclick=async()=>{
   $('#rs').textContent='Pronto! '+recDur+'s · '+(blob.size/1048576).toFixed(1)+' MB';$('#pub').style.display='block';gate()};
  rec.start(1000);t0=Date.now();$('#rec').textContent='■ Parar gravação';$('#rec').classList.add('rec');if(!playing)start();
  rt=setInterval(()=>{const s=Math.round((Date.now()-t0)/1000);$('#rs').textContent='Gravando… '+s+'s';if(s>=MAXS)rec.stop()},500)};
+const EXT={'audio/mpeg':'mp3','audio/mp4':'m4a','audio/aac':'aac','audio/wav':'wav','audio/ogg':'ogg','audio/flac':'flac','audio/webm':'webm'};
+const BYEXT={mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',wav:'audio/wav',ogg:'audio/ogg',flac:'audio/flac',webm:'audio/webm'};
+$('#imp').onclick=()=>$('#imf').click();
+$('#imf').onchange=async e=>{const f=e.target.files[0];if(!f)return;const x=(f.name.split('.').pop()||'').toLowerCase(),mt=BYEXT[x];const is=$('#is');
+ if(!mt){is.textContent='Formato não aceito. Use mp3, m4a, wav, ogg, flac ou webm.';return}
+ if(f.size>15*1048576){is.textContent='O arquivo passa de 15 MB.';return}
+ if(f.size<2000){is.textContent='Arquivo muito pequeno ou vazio.';return}
+ blob=new Blob([f],{type:mt});const url=URL.createObjectURL(blob);
+ const d=await new Promise(r=>{const a=new Audio();a.preload='metadata';a.onloadedmetadata=()=>r(a.duration);a.onerror=()=>r(-1);a.src=url});
+ if(d<0||isNaN(d)){is.textContent='Não consegui ler esse áudio. O arquivo parece inválido.';blob=null;return}
+ recDur=isFinite(d)?Math.round(d):0;
+ if(recDur&&(recDur<3||recDur>3600)){is.textContent='A duração deve ficar entre 3 s e 60 min.';blob=null;return}
+ const pv=$('#pv');pv.src=url;pv.style.display='block';$('#tt').value=$('#tt').value||f.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim().slice(0,80);
+ is.textContent='✓ '+f.name+' · '+(f.size/1048576).toFixed(1)+' MB'+(recDur?' · '+Math.floor(recDur/60)+':'+String(recDur%60).padStart(2,'0'):'')+' · verificado';
+ $('#pub').style.display='block';gate()};
 // login/publicação
 let user=null;
 async function gate(){const {data}=await sb.auth.getSession();user=data.session&&data.session.user;$('#lg').style.display=user?'none':'block';$('#pb').disabled=!user}
@@ -128,7 +146,7 @@ $('#pb').onclick=async()=>{
  if(blob.size>15*1048576){e.textContent='Passou de 15 MB. Grave um trecho menor.';return}
  if(!user){e.textContent='Entre primeiro.';return}
  $('#pb').disabled=true;$('#pb').textContent='Publicando…';
- const ext=blob.type.includes('mp4')?'m4a':'webm',path=user.id+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+'.'+ext;
+ const ext=EXT[blob.type]||'webm',path=user.id+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+'.'+ext;
  const up=await sb.upload('mm-tracks',path,blob,blob.type);
  if(up.error){e.textContent='Não foi possível enviar o áudio. Tente de novo.';$('#pb').disabled=false;$('#pb').textContent='Publicar';return}
  const r=await sb.from('mm_published').insert({title,artist,path,cover:null,duration:recDur});

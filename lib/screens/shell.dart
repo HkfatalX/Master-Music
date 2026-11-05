@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/library_service.dart';
 import '../services/player_service.dart';
 import '../theme.dart';
@@ -29,6 +30,13 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     Library.I.init();
+    // Pede a permissão de notificação só depois da tela aparecer (antes disso o Android ignora o pedido).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      try {
+        if (await Permission.notification.isDenied) await Permission.notification.request();
+      } catch (_) {}
+    });
     PlayerService.I.error.addListener(_onError);
   }
 

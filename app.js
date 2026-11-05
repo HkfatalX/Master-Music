@@ -283,7 +283,7 @@ async function vCommunity(v) {
   $('#pb').addEventListener('submit', async (e) => {
     e.preventDefault(); const er = $('#pe2'); er.className = 'err'; er.textContent = ''; const b = $('#pgo'); b.disabled = true;
     try { await publishTrack({ file: $('#pf1').files[0], title: $('#pt').value.trim(), artist: $('#pa').value.trim(), coverFile: $('#pc').files[0] }); toast('Publicada! Já está na Comunidade.'); render(); }
-    catch (x) { er.textContent = x.message === 'big' ? 'O arquivo passa de 15 MB.' : 'Não foi possível publicar. Confira o arquivo e tente de novo.'; b.disabled = false; }
+    catch (x) { er.textContent = x.message === 'big' ? 'O arquivo passa de 15 MB.' : x.message === 'formato' ? 'Formato não aceito. Use mp3, m4a, wav, ogg, flac ou webm.' : 'Não foi possível publicar. Confira o arquivo e tente de novo.'; b.disabled = false; }
   });
   try {
     const { data, error } = await sb.from('mm_published').select().order('created_at', { ascending: false }).limit(60); if (error) throw error;
@@ -297,7 +297,9 @@ async function publishTrack({ file, title, artist, coverFile, duration }) {
   if (file.size > 15 * 1048576) throw new Error('big');
   const ext = (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp3';
   const path = S.user.id + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + '.' + ext;
-  const up = await sb.upload('mm-tracks', path, file, (file.type || 'audio/mpeg').split(';')[0]); if (up.error) throw up.error;
+  const MT = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', flac: 'audio/flac', webm: 'audio/webm' };
+  if (!MT[ext]) throw new Error('formato');
+  const up = await sb.upload('mm-tracks', path, file, MT[ext]); if (up.error) throw up.error;
   let cover = null; if (coverFile) cover = await resizeImg(coverFile, 400, 0.8);
   const dur = duration || await new Promise((res) => { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => res(Math.round(a.duration) || 0); a.onerror = () => res(0); a.src = URL.createObjectURL(file); });
   const { error } = await sb.from('mm_published').insert({ title, artist, path, cover, duration: dur }); if (error) throw error;
@@ -330,8 +332,11 @@ async function vDownload(v) {
   <h2>Como instalar</h2><ol class="muted" style="line-height:1.9;margin-left:22px"><li>Baixe o arquivo APK pelo botão acima.</li><li>Abra o arquivo e permita "instalar de fontes desconhecidas" se o Android pedir.</li><li>Abra o Master Music e entre com sua conta.</li></ol>`;
   try {
     const r = await fetch(`https://api.github.com/repos/${CFG.repo}/releases/latest`); const j = await r.json();
-    const apk = (j.assets || []).find((a) => a.name.endsWith('.apk'));
-    $('#dlb').innerHTML = apk ? `<a class="btn" href="${esc(apk.browser_download_url)}">⬇ Baixar v${esc(String(j.tag_name).replace(/^v/, ''))}</a><p class="muted small" style="margin-top:10px">${(apk.size / 1048576).toFixed(0)} MB • Android 7+</p>` : '<p class="muted">Nenhuma versão publicada ainda.</p>';
+    const as = (j.assets || []).filter((a) => a.name.endsWith('.apk')), ver = esc(String(j.tag_name).replace(/^v/, ''));
+    const pick = (re) => as.find((a) => re.test(a.name));
+    const items = [['Master Music', pick(/^MasterMusic-\d/), 'Completo'], ['Master Music Lite', pick(/Lite/i), 'Leve, para celulares fracos'], ['Master Music Studio', pick(/Studio/i), 'Publique suas músicas']];
+    const btns = items.filter((x) => x[1]).map((x) => `<p style="margin:0 0 14px"><a class="btn" href="${esc(x[1].browser_download_url)}">⬇ ${x[0]} v${ver}</a><br><span class="muted small">${x[2]} • ${(x[1].size / 1048576).toFixed(0)} MB • Android 7+</span></p>`).join('');
+    $('#dlb').innerHTML = btns || '<p class="muted">Nenhuma versão publicada ainda.</p>';
   } catch { $('#dlb').innerHTML = `<a class="btn" href="https://github.com/${CFG.repo}/releases/latest">Ver versões no GitHub</a>`; }
 }
 async function vChangelog(v) {

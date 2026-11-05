@@ -90,6 +90,17 @@ jobs:
           flutter build apk --release --target-platform android-arm,android-arm64 --dart-define=LITE=true 2>&1 | tee build-lite.log
           cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Lite-$VERSION.apk"
 
+      - name: Compilar Master Music Studio
+        shell: bash
+        run: |
+          set -o pipefail
+          sed -i -E '/applicationId/ s/master_music\.lite"/master_music.studio"/' android/app/build.gradle*
+          sed -i 's/android:label="Master Music Lite"/android:label="Master Music Studio"/' android/app/src/main/AndroidManifest.xml
+          grep -n applicationId android/app/build.gradle*
+          dart run flutter_launcher_icons -f flutter_launcher_icons-studio.yaml
+          flutter build apk --release --target-platform android-arm,android-arm64 --target lib/studio_main.dart 2>&1 | tee build-studio.log
+          cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Studio-$VERSION.apk"
+
       - uses: actions/upload-artifact@v4
         with:
           name: MasterMusic-apk
@@ -104,3 +115,4 @@ jobs:
           files: |
             out/MasterMusic-${{ env.VERSION }}.apk
             out/MasterMusic-Lite-${{ env.VERSION }}.apk
+            out/MasterMusic-Studio-${{ env.VERSION }}.apk
