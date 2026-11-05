@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Master Music Estúdio</title><meta name="theme-color" content="#0B0714">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="favicon.png"><link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#0B0714;--c:#17102B;--c2:#241942;--p:#A66BFF;--t:#F3EEFF;--m:#9A8FB8;--ok:#5CE1A0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px system-ui,sans-serif;padding:12px 12px 40px;max-width:900px;margin:auto}
+header{display:flex;align-items:center;gap:10px;margin:6px 0 14px}header img{width:40px;height:40px}h1{font-size:20px;margin:0}
+.card{background:var(--c);border-radius:14px;padding:12px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,select,input{font:inherit;color:var(--t);background:var(--c2);border:0;border-radius:10px;padding:10px 14px}
+button{cursor:pointer}button.pr{background:var(--p);color:#10061f;font-weight:700}button:disabled{opacity:.5}
+input[type=text],input[type=email],input[type=password]{width:100%;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:62px repeat(16,1fr);gap:3px;align-items:center}
+.grid span{font-size:11px;color:var(--m);overflow:hidden}
+.c{aspect-ratio:1;border-radius:5px;background:var(--c2);border:0;padding:0;min-height:20px}
+.c.g4{background:#2d2150}.c.on{background:var(--p)}.c.cur{outline:2px solid #fff}
+.m{color:var(--m);font-size:13px}.err{color:#ff7b8a;font-size:13px;min-height:18px}
+input[type=range]{padding:0;width:140px}label.k{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--m);margin:8px 0}
+label.k input{margin-top:2px}.rec{background:#c0264a!important}
+a{color:var(--p)}
+</style></head><body>
+<header><img src="icon-192.png" alt=""><div><h1>Master Music Estúdio</h1><div class="m">Crie sua música e publique no site e no app</div></div></header>
+
+<div class="card"><div class="row">
+<button id="play" class="pr">▶ Tocar</button>
+<label>BPM <input id="bpm" type="range" min="60" max="180" value="110"> <b id="bv">110</b></label>
+<label>Tom <select id="key"></select></label>
+<label>Acordes <select id="prog"><option value="0,0,0,0">I I I I</option><option value="0,5,3,4" selected>I vi IV V</option><option value="0,3,4,3">I IV V IV</option><option value="5,3,0,4">vi IV I V</option></select></label>
+</div><div class="row" style="margin-top:8px"><button id="rnd">🎲 Aleatório</button><button id="clr">Limpar</button><label class="m">Balanço <input id="sw" type="range" min="0" max="40" value="0"></label></div></div>
+
+<div class="card"><div id="grid" class="grid"></div></div>
+
+<div class="card">
+<div class="row"><button id="rec">⏺ Gravar</button><span id="rs" class="m">Grave alguns compassos (máx. 2 min) e depois publique.</span></div>
+<audio id="pv" controls style="width:100%;margin-top:10px;display:none"></audio>
+</div>
+
+<div class="card" id="pub" style="display:none">
+<b>Publicar</b>
+<input id="tt" type="text" maxlength="80" placeholder="Título da música" style="margin-top:8px">
+<input id="ta" type="text" maxlength="60" placeholder="Seu nome artístico">
+<label class="k"><input id="rt" type="checkbox"> Esta música é minha (feita aqui) e autorizo publicá-la no Master Music.</label>
+<div class="row"><button id="pb" class="pr">Publicar</button><a href="../comunidade">Ver Comunidade</a></div><div id="pe" class="err"></div>
+</div>
+
+<div class="card" id="lg" style="display:none">
+<b>Entre para publicar</b><p class="m">Use a mesma conta do Master Music.</p>
+<input id="em" type="email" placeholder="E-mail" autocomplete="username"><input id="pw" type="password" placeholder="Senha" autocomplete="current-password">
+<button id="li" class="pr">Entrar</button><div id="le" class="err"></div>
+</div>
+
+<script src="../lite.js?v=2"></script>
+<script>
+const URL_='https://jpoxxjjmxntwjdmgcypi.supabase.co',KEY_='sb_publishable__21zkEoebAUtpDQsF-Eizg_fc1YSfbX';
+const sb=window.MMLite(URL_,KEY_);const $=s=>document.querySelector(s);
+const N=16,NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const PENT=[12,9,7,4,2,0,-3,-5]; // intervalos pentatônicos (do agudo ao grave)
+const DR=['Bumbo','Caixa','Chimbal','Palma'];
+const st={d:DR.map(()=>Array(N).fill(0)),m:PENT.map(()=>Array(N).fill(0))};
+st.d[0]=st.d[0].map((_,i)=>i%4==0?1:0);st.d[2]=st.d[2].map((_,i)=>i%2==0?1:0);st.d[1][4]=st.d[1][12]=1;
+st.m[5][0]=st.m[3][4]=st.m[2][8]=st.m[3][12]=1;
+NOTES.forEach((n,i)=>{const o=document.createElement('option');o.value=i;o.textContent=n;if(i==9)o.selected=true;$('#key').appendChild(o)});
+const g=$('#grid');
+function build(){g.innerHTML='';
+ const add=(lbl,arr,r,kind)=>{const s=document.createElement('span');s.textContent=lbl;g.appendChild(s);
+  for(let i=0;i<N;i++){const b=document.createElement('button');b.className='c'+(i%4==0?' g4':'')+(arr[i]?' on':'');b.dataset.k=kind;b.dataset.r=r;b.dataset.i=i;b.setAttribute('aria-label',lbl+' '+(i+1));g.appendChild(b)}};
+ DR.forEach((n,r)=>add(n,st.d[r],r,'d'));
+ PENT.forEach((p,r)=>add('Nota '+(r+1),st.m[r],r,'m'));}
+build();
+g.addEventListener('click',e=>{const b=e.target.closest('.c');if(!b)return;const a=st[b.dataset.k][+b.dataset.r],i=+b.dataset.i;a[i]=a[i]?0:1;b.classList.toggle('on',!!a[i]);
+ if(a[i]){ensure();if(b.dataset.k=='d')drum(+b.dataset.r,ctx.currentTime);else tone(+b.dataset.r,ctx.currentTime,.25)}});
+let ctx,master,dest,rec,chunks=[],timer=null,step=0,next=0,playing=false,mime='';
+function ensure(){if(ctx)return;ctx=new (window.AudioContext||window.webkitAudioContext)();
+ master=ctx.createGain();master.gain.value=.8;const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);dest=ctx.createMediaStreamDestination();comp.connect(dest);
+ const len=ctx.sampleRate*.5,nb=ctx.createBuffer(1,len,ctx.sampleRate),d=nb.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;window.noise=nb}
+function env(gn,t,a,dur,v){gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(v,t+a);gn.gain.exponentialRampToValueAtTime(.001,t+dur)}
+function drum(r,t){
+ if(r==0){const o=ctx.createOscillator(),gn=ctx.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);env(gn,t,.002,.35,1);o.connect(gn).connect(master);o.start(t);o.stop(t+.4)}
+ else{const s=ctx.createBufferSource(),f=ctx.createBiquadFilter(),gn=ctx.createGain();s.buffer=noise;
+  if(r==2){f.type='highpass';f.frequency.value=7000;env(gn,t,.001,.06,.35)}
+  else if(r==1){f.type='bandpass';f.frequency.value=1800;env(gn,t,.001,.18,.8);const o=ctx.createOscillator(),og=ctx.createGain();o.frequency.value=190;env(og,t,.001,.1,.5);o.connect(og).connect(master);o.start(t);o.stop(t+.15)}
+  else{f.type='bandpass';f.frequency.value=1200;env(gn,t,.001,.14,.7)}
+  s.connect(f).connect(gn).connect(master);s.start(t);s.stop(t+.3)}}
+const freq=(semi)=>440*Math.pow(2,(semi-9)/12);
+function root(){return +$('#key').value}
+function tone(r,t,dur){const o=ctx.createOscillator(),gn=ctx.createGain();o.type='triangle';o.frequency.value=freq(root()+12+PENT[r]+chordRoot(step));env(gn,t,.01,dur+.15,.35);o.connect(gn).connect(master);o.start(t);o.stop(t+dur+.2)}
+const MAJ=[0,2,4,5,7,9,11];
+function chordRoot(s){const p=$('#prog').value.split(',').map(Number);return MAJ[p[Math.floor(s/4)%4]]}
+function bass(t,s,dur){const o=ctx.createOscillator(),gn=ctx.createGain();o.type='sawtooth';const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=400;o.frequency.value=freq(root()-12+chordRoot(s));env(gn,t,.01,dur,.4);o.connect(f).connect(gn).connect(master);o.start(t);o.stop(t+dur+.05)}
+function sched(){const bpm=+$('#bpm').value,sd=60/bpm/4;
+ while(next<ctx.currentTime+.15){const sw=(step%2?+$('#sw').value/100*sd:0),t=next+sw;
+  DR.forEach((_,r)=>{if(st.d[r][step])drum(r,t)});
+  PENT.forEach((_,r)=>{if(st.m[r][step])tone(r,t,sd*2)});
+  if(step%4==0||(step%4==2&&st.d[0][step]))bass(t,step,sd*3);
+  const at=(next-ctx.currentTime)*1000;const s=step;setTimeout(()=>mark(s),Math.max(0,at));
+  next+=sd;step=(step+1)%N}}
+function mark(s){document.querySelectorAll('.cur').forEach(x=>x.classList.remove('cur'));if(!playing)return;document.querySelectorAll('.c[data-i="'+s+'"]').forEach(x=>x.classList.add('cur'))}
+async function start(){ensure();await ctx.resume();step=0;next=ctx.currentTime+.05;playing=true;timer=setInterval(sched,25);$('#play').textContent='■ Parar'}
+function stop(){playing=false;clearInterval(timer);mark(-1);$('#play').textContent='▶ Tocar'}
+$('#play').onclick=()=>playing?stop():start();
+$('#bpm').oninput=e=>$('#bv').textContent=e.target.value;
+$('#clr').onclick=()=>{st.d.forEach(a=>a.fill(0));st.m.forEach(a=>a.fill(0));build()};
+$('#rnd').onclick=()=>{st.d[0]=st.d[0].map((_,i)=>i%4==0||Math.random()<.1?1:0);st.d[1]=st.d[1].map((_,i)=>i%8==4?1:Math.random()<.08?1:0);st.d[2]=st.d[2].map((_,i)=>i%2==0?1:Math.random()<.3?1:0);st.d[3]=st.d[3].map(()=>Math.random()<.1?1:0);
+ st.m.forEach(a=>a.fill(0));let r=5;for(let i=0;i<N;i++){if(Math.random()<.55){r=Math.max(0,Math.min(7,r+Math.floor(Math.random()*5)-2));st.m[r][i]=1}}build()};
+// gravação
+const MAXS=120;let rt=null,t0=0,blob=null,recDur=0;
+$('#rec').onclick=async()=>{
+ if(rec&&rec.state=='recording'){rec.stop();return}
+ ensure();await ctx.resume();
+ mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||'';
+ if(!window.MediaRecorder){$('#rs').textContent='Seu navegador não suporta gravação. Use o Chrome.';return}
+ chunks=[];rec=new MediaRecorder(dest.stream,mime?{mimeType:mime,audioBitsPerSecond:128000}:undefined);
+ rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+ rec.onstop=()=>{clearInterval(rt);stop();recDur=Math.round((Date.now()-t0)/1000);blob=new Blob(chunks,{type:(rec.mimeType||mime||'audio/webm').split(';')[0]});
+  const pv=$('#pv');pv.src=URL.createObjectURL(blob);pv.style.display='block';$('#rec').textContent='⏺ Gravar de novo';$('#rec').classList.remove('rec');
+  $('#rs').textContent='Pronto! '+recDur+'s · '+(blob.size/1048576).toFixed(1)+' MB';$('#pub').style.display='block';gate()};
+ rec.start(1000);t0=Date.now();$('#rec').textContent='■ Parar gravação';$('#rec').classList.add('rec');if(!playing)start();
+ rt=setInterval(()=>{const s=Math.round((Date.now()-t0)/1000);$('#rs').textContent='Gravando… '+s+'s';if(s>=MAXS)rec.stop()},500)};
+// login/publicação
+let user=null;
+async function gate(){const {data}=await sb.auth.getSession();user=data.session&&data.session.user;$('#lg').style.display=user?'none':'block';$('#pb').disabled=!user}
+$('#li').onclick=async()=>{$('#le').textContent='';const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error)$('#le').textContent='E-mail ou senha incorretos.';else gate()};
+$('#pb').onclick=async()=>{
+ const e=$('#pe');e.textContent='';const title=$('#tt').value.trim(),artist=$('#ta').value.trim();
+ if(!blob||!title||!artist){e.textContent='Preencha título e nome artístico.';return}
+ if(!$('#rt').checked){e.textContent='Confirme que a música é sua.';return}
+ if(blob.size>15*1048576){e.textContent='Passou de 15 MB. Grave um trecho menor.';return}
+ if(!user){e.textContent='Entre primeiro.';return}
+ $('#pb').disabled=true;$('#pb').textContent='Publicando…';
+ const ext=blob.type.includes('mp4')?'m4a':'webm',path=user.id+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+'.'+ext;
+ const up=await sb.upload('mm-tracks',path,blob,blob.type);
+ if(up.error){e.textContent='Não foi possível enviar o áudio. Tente de novo.';$('#pb').disabled=false;$('#pb').textContent='Publicar';return}
+ const r=await sb.from('mm_published').insert({title,artist,path,cover:null,duration:recDur});
+ if(r.error){sb.remove('mm-tracks',path);e.textContent='Não foi possível publicar. Tente de novo.';$('#pb').disabled=false;$('#pb').textContent='Publicar';return}
+ $('#pe').style.color='var(--ok)';e.textContent='Publicada! Já aparece na Comunidade do site e do app.';$('#pb').textContent='Publicada ✓'};
+gate();
+if('serviceWorker' in navigator){/* PWA instalável via manifest */}
+</script></body></html>

@@ -12,6 +12,8 @@ on:
       - 'manifest.webmanifest'
       - 'img/**'
       - 'README.md'
+      - 'studio/**'
+      - 'lite.js'
   workflow_dispatch:
 
 permissions:
@@ -83,6 +85,8 @@ jobs:
           sed -i -E '/applicationId/ s/master_music"/master_music.lite"/' android/app/build.gradle*
           sed -i 's/android:label="Master Music"/android:label="Master Music Lite"/' android/app/src/main/AndroidManifest.xml
           grep -n applicationId android/app/build.gradle*
+          cp assets/lite/logo.png assets/logo.png; cp assets/lite/logo_mark.png assets/logo_mark.png
+          dart run flutter_launcher_icons -f flutter_launcher_icons-lite.yaml
           flutter build apk --release --target-platform android-arm,android-arm64 --dart-define=LITE=true 2>&1 | tee build-lite.log
           cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Lite-$VERSION.apk"
 

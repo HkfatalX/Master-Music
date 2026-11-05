@@ -62,7 +62,15 @@
         return { data: j, error: null, count };
       }
     }
-    return { auth, from: (t) => new Q(t) };
+    async function upload(bucket, path, blob, type) {
+      const tok = (await fresh()) || key;
+      try { const r = await fetch(url + '/storage/v1/object/' + bucket + '/' + path.split('/').map(encodeURIComponent).join('/'), { method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + tok, 'Content-Type': type || 'application/octet-stream', 'x-upsert': 'false' }, body: blob }); if (!r.ok) { const j = await r.json().catch(() => ({})); return { error: new Error(j.message || 'Erro ' + r.status) }; } return { error: null }; } catch (e) { return { error: new Error('network fetch failed') }; }
+    }
+    async function remove(bucket, path) {
+      const tok = (await fresh()) || key;
+      try { await fetch(url + '/storage/v1/object/' + bucket + '/' + path.split('/').map(encodeURIComponent).join('/'), { method: 'DELETE', headers: { apikey: key, Authorization: 'Bearer ' + tok } }); } catch (e) {}
+    }
+    return { auth, from: (t) => new Q(t), upload, remove };
   }
   window.MMLite = create;
 })();

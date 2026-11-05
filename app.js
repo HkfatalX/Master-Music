@@ -34,7 +34,14 @@ const ic = {
   link: '<svg viewBox="0 0 24 24"><path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12zM8 13h8v-2H8zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10z"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>',
 };
-const S = { user: null, favs: new Set(), queue: [], idx: -1, shuffle: false, repeat: 0, pending: null, recovery: false, genre: '', cache: {} };
+const S = { user: null, favs: new Set(), queue: [], idx: -1, shuffle: false, repeat: 0, pending: null, recovery: false, genre: '', cache: {}, profile: null };
+const SET = (() => { try { return Object.assign({ lite: false, recs: true }, JSON.parse(localStorage.getItem('mm_set_v1') || '{}')); } catch (e) { return { lite: false, recs: true }; } })();
+const saveSet = () => { try { localStorage.setItem('mm_set_v1', JSON.stringify(SET)); } catch (e) {} document.documentElement.classList.toggle('lite', !!SET.lite); };
+saveSet();
+const dname = () => (S.profile && S.profile.display_name) || 'Ouvinte';
+async function loadProfile() { if (!S.user) { S.profile = null; return; } const { data } = await sb.from('mm_profiles').select().eq('user_id', S.user.id); S.profile = data && data[0] || null; }
+const avatarHtml = (sz) => S.profile && S.profile.avatar ? `<img src="${esc(S.profile.avatar)}" alt="" style="width:${sz}px;height:${sz}px;border-radius:50%;object-fit:cover">` : `<div class="ph" style="width:${sz}px;height:${sz}px;border-radius:50%;font-weight:900;font-size:${sz / 2.4}px">${esc(dname()[0].toUpperCase())}</div>`;
+function resizeImg(file, max, q) { return new Promise((res, rej) => { const im = new Image(); const u = URL.createObjectURL(file); im.onload = () => { const r = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); res(c.toDataURL('image/jpeg', q)); }; im.onerror = () => rej(new Error('imagem inválida')); im.src = u; }); }
 const audio = $('#audio');
 
 /* ---------- util ---------- */
@@ -66,7 +73,7 @@ async function audiusList(path, q) {
   const j = await r.json();
   return (j.data || []).filter((x) => x.is_streamable !== false && x.id).map(track);
 }
-const streamUrl = (id) => `${CFG.audius}/tracks/${encodeURIComponent(id)}/stream?app_name=${CFG.app}`;
+const streamUrl = (id) => String(id).startsWith('mm:') ? `${CFG.url}/storage/v1/object/public/mm-tracks/${String(id).slice(3).split('/').map(encodeURIComponent).join('/')}` : `${CFG.audius}/tracks/${encodeURIComponent(id)}/stream?app_name=${CFG.app}`;
 
 /* ---------- auth (e-mail e senha) ---------- */
 const A = sb.auth;
@@ -166,22 +173,44 @@ const row = (t, list, i) => `<div class="row" data-play="${i}" data-list="${list
 const card = (t, list, i) => `<div class="card" data-play="${i}" data-list="${list}">${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}<b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>`;
 const skel = (n = 6) => Array.from({ length: n }, () => '<div class="skel"></div>').join('');
 const errBox = (m) => `<div class="box center"><p class="muted">${esc(m)}</p><br><button class="btn" data-act="reload">Tentar de novo</button></div>`;
-const GENRES = [['Tudo', ''], ['Eletrônica', 'Electronic'], ['Hip-Hop', 'Hip-Hop/Rap'], ['Pop', 'Pop'], ['Rock', 'Rock'], ['Lo-Fi', 'Lo-Fi'], ['Jazz', 'Jazz'], ['Funk', 'Funk'], ['Ambient', 'Ambient']];
+const GENRES = [['Tudo', ''], ['Eletrônica', 'Electronic'], ['Hip-Hop', 'Hip-Hop/Rap'], ['Pop', 'Pop'], ['Rock', 'Rock'], ['Lo-Fi', 'Lo-Fi'], ['Jazz', 'Jazz'], ['Funk', 'Funk'], ['Ambient', 'Ambient'], ['R&B', 'R&B/Soul'], ['Alternativo', 'Alternative'], ['Metal', 'Metal'], ['Trap', 'Trap'], ['House', 'House'], ['Techno', 'Techno'], ['Dubstep', 'Dubstep'], ['Drum & Bass', 'Drum & Bass'], ['Trance', 'Trance'], ['Acústico', 'Acoustic'], ['Clássica', 'Classical'], ['Reggae', 'Reggae'], ['Latina', 'Latin'], ['Country', 'Country'], ['Folk', 'Folk'], ['Punk', 'Punk']];
 const lists = {}; // listas atuais por nome para os cliques
 
 async function vHome(v) {
   const hour = new Date().getHours();
   const hi = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-  v.innerHTML = `<p class="muted">${hi}, ${esc((S.user.email || '').split('@')[0])}</p><h1>Em alta agora</h1>
+  v.innerHTML = `<p class="muted">${hi}, ${esc(dname())}</p><h1>Em alta agora</h1>
   <div class="chips">${GENRES.map(([n, g]) => `<a class="chip ${S.genre === g ? 'on' : ''}" data-genre="${esc(g)}">${n}</a>`).join('')}</div><div id="hl">${skel()}</div>`;
   try {
     const list = await audiusList('/tracks/trending', { limit: 30, genre: S.genre }); lists.home = list;
     $('#hl').innerHTML = `<div class="hero"><div><h1>Mix do momento</h1><p style="opacity:.8;margin:6px 0 16px">${list.length} faixas em alta, grátis</p>
       <button class="btn white" data-act="playall" data-list="home">▶ Tocar</button> <button class="btn alt" data-act="shuffleall" data-list="home">Aleatório</button></div><img src="img/logo-512.png" alt=""></div>
-      <h2>Para você</h2><div class="grid">${list.slice(0, 12).map((t, i) => card(t, 'home', i)).join('')}</div>
+      <div id="rc"></div><h2>Para você</h2><div class="grid">${list.slice(0, 12).map((t, i) => card(t, 'home', i)).join('')}</div>
       <h2>Mais faixas</h2>${list.map((t, i) => row(t, 'home', i)).join('')}`;
-    markCurrent();
+    markCurrent(); if (SET.recs) loadRecs();
   } catch { $('#hl').innerHTML = errBox('Não consegui carregar as músicas. Verifique sua internet.'); }
+}
+async function loadRecs() {
+  try {
+    const hist = (await dbList('mm_history', (q) => q.order('played_at', { ascending: false }).limit(80))).map(fromRow);
+    const fav = (await dbList('mm_favorites')).map(fromRow);
+    const known = new Set([...hist, ...fav].map((t) => t.id)); const cnt = {};
+    [...hist, ...fav, ...fav].forEach((t) => { if (t.artist) cnt[t.artist] = (cnt[t.artist] || 0) + 1; });
+    const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).slice(0, 6).sort(() => Math.random() - 0.5).slice(0, 3);
+    const el = $('#rc'); if (!el) return;
+    let html = '';
+    if (top.length) {
+      const res = await Promise.all(top.map((a) => audiusList('/tracks/search', { query: a, limit: 10 }).catch(() => [])));
+      const seen = new Set(); const out = [];
+      res.flat().forEach((t) => { if (!known.has(t.id) && !seen.has(t.id)) { seen.add(t.id); out.push(t); } });
+      out.sort(() => Math.random() - 0.5); lists.rec = out.slice(0, 18);
+      if (lists.rec.length) html += `<h2>Feito para você</h2><div class="grid">${lists.rec.map((t, i) => card(t, 'rec', i)).join('')}</div>`;
+    }
+    const gs = GENRES.filter(([, g]) => g && g !== S.genre).sort(() => Math.random() - 0.5)[0];
+    const dl = (await audiusList('/tracks/trending', { limit: 20, genre: gs[1] })).sort(() => Math.random() - 0.5).slice(0, 12); lists.disc = dl;
+    if (dl.length) html += `<h2>Descubra algo novo • ${esc(gs[0])}</h2><div class="grid">${dl.map((t, i) => card(t, 'disc', i)).join('')}</div>`;
+    el.innerHTML = html; markCurrent();
+  } catch (e) {}
 }
 async function vSearch(v) {
   v.innerHTML = `<h1>Buscar</h1><input id="q" class="field" placeholder="Músicas, artistas..." autocomplete="off" value="${esc(new URLSearchParams(location.search).get('q') || '')}"><div id="sr"></div>`;
@@ -223,9 +252,55 @@ async function vPlaylist(v, id) {
   } catch { $('#pl').innerHTML = errBox('Playlist não encontrada.'); }
 }
 function vProfile(v) {
-  v.innerHTML = `<h1>Perfil</h1><div class="hero" style="margin-top:16px"><div><p style="opacity:.8">Sua conta</p><h1 style="font-size:22px;word-break:break-all">${esc(S.user.email)}</h1></div><img src="img/logo-512.png" alt=""></div>
-  <div class="box" style="margin-top:16px"><p><b>Privacidade:</b> <span class="muted">seus favoritos, playlists e histórico ficam na sua conta e só você vê. O app Android é opcional: tudo funciona aqui no site.</span></p></div>
-  <p style="margin-top:18px"><a class="btn alt" href="${BASE}baixar" data-go="/baixar">Baixar o app Android</a> <a class="btn alt" href="${BASE}novidades" data-go="/novidades">Novidades e versões</a> <button class="btn" data-act="logout">Sair da conta</button></p>`;
+  v.innerHTML = `<h1>Perfil</h1><div class="box" style="margin-top:16px"><div style="display:flex;align-items:center;gap:16px"><div id="pav">${avatarHtml(84)}</div><div style="flex:1;min-width:0"><h2 style="margin:0">${esc(dname())}</h2><p class="muted small">Só você vê sua conta. Seu e-mail nunca aparece para outras pessoas.</p></div></div>
+  <form id="pf" style="display:flex;flex-direction:column;gap:8px;margin-top:16px"><input class="field" id="pn" maxlength="40" placeholder="Seu nome" value="${esc((S.profile && S.profile.display_name) || '')}"><label class="muted small">Foto de perfil<input type="file" id="pp2" accept="image/*" style="display:block;margin-top:6px"></label><p class="err" id="pe"></p><button class="btn">Salvar perfil</button></form></div>
+  <p style="margin-top:18px;display:flex;flex-wrap:wrap;gap:10px"><a class="btn alt" href="${BASE}config" data-go="/config">Configurações</a><a class="btn alt" href="${BASE}conexoes" data-go="/conexoes">Conexões</a><a class="btn alt" href="${BASE}baixar" data-go="/baixar">Baixar o app (opcional)</a><a class="btn alt" href="${BASE}novidades" data-go="/novidades">Novidades</a><button class="btn" data-act="logout">Sair da conta</button></p>`;
+  $('#pf').addEventListener('submit', async (e) => {
+    e.preventDefault(); const er = $('#pe'); er.textContent = ''; er.className = 'err';
+    try {
+      const row = { user_id: S.user.id, display_name: $('#pn').value.trim() || null, updated_at: new Date().toISOString() };
+      const f = $('#pp2').files[0]; if (f) row.avatar = await resizeImg(f, 256, 0.82); else if (S.profile && S.profile.avatar) row.avatar = S.profile.avatar;
+      const { error } = await sb.from('mm_profiles').upsert(row, { onConflict: 'user_id' }); if (error) throw error;
+      await loadProfile(); toast('Perfil salvo!'); render();
+    } catch (x) { er.textContent = 'Não foi possível salvar. Tente de novo.'; }
+  });
+}
+function vConfig(v) {
+  const sw = (k, t, d) => `<label class="row" style="cursor:pointer"><div class="t"><b>${t}</b><span>${d}</span></div><input type="checkbox" data-set="${k}" ${SET[k] ? 'checked' : ''} style="width:22px;height:22px"></label>`;
+  v.innerHTML = `<h1>Configurações</h1><div class="box" style="margin-top:16px">${sw('lite', 'Modo leve', 'Sem animações e efeitos, para aparelhos fracos')}${sw('recs', 'Recomendações', 'Mostrar “Feito para você” e “Descubra algo novo” no Início')}</div>
+  <div class="box" style="margin-top:16px"><b>Dados</b><p class="muted small" style="margin:6px 0 12px">Apagar o histórico de músicas tocadas desta conta.</p><button class="btn alt" id="clh">Apagar histórico</button></div>
+  <p style="margin-top:18px"><a class="link" href="${BASE}perfil" data-go="/perfil">← Perfil</a></p>`;
+  v.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { SET[i.dataset.set] = i.checked; saveSet(); toast('Salvo'); }));
+  $('#clh').addEventListener('click', async () => { if (!confirm('Apagar todo o histórico?')) return; const { error } = await sb.from('mm_history').delete().eq('user_id', S.user.id); toast(error ? 'Não foi possível apagar.' : 'Histórico apagado.'); });
+}
+const pubTrack = (r) => ({ id: 'mm:' + r.path, title: r.title, artist: r.artist, art: r.cover || null, dur: r.duration || 0, uid: r.user_id, rid: r.id });
+async function vCommunity(v) {
+  v.innerHTML = `<h1>Comunidade</h1><p class="muted" style="margin:6px 0 16px">Músicas publicadas por pessoas do Master Music, grátis e sem anúncios.</p>
+  <div class="box" style="margin-bottom:16px"><b>Publicar minha música</b><form id="pb" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"><input class="field" id="pt" maxlength="80" placeholder="Título" required><input class="field" id="pa" maxlength="60" placeholder="Artista" value="${esc(dname() === 'Ouvinte' ? '' : dname())}" required>
+  <label class="muted small">Arquivo de áudio (MP3, WAV, M4A, OGG, WEBM • até 15 MB)<input type="file" id="pf1" accept="audio/*" required style="display:block;margin-top:6px"></label><label class="muted small">Capa (opcional)<input type="file" id="pc" accept="image/*" style="display:block;margin-top:6px"></label>
+  <label class="muted small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="pr" required style="margin-top:3px"> Declaro que a música é minha (ou tenho permissão) e aceito que fique pública.</label><p class="err" id="pe2"></p><button class="btn" id="pgo">Publicar</button></form>
+  <p class="muted small" style="margin-top:10px">Quer criar uma música agora? <a class="link" href="${BASE}estudio/">Abrir o Estúdio</a></p></div><div id="cm">${skel(4)}</div>`;
+  $('#pb').addEventListener('submit', async (e) => {
+    e.preventDefault(); const er = $('#pe2'); er.className = 'err'; er.textContent = ''; const b = $('#pgo'); b.disabled = true;
+    try { await publishTrack({ file: $('#pf1').files[0], title: $('#pt').value.trim(), artist: $('#pa').value.trim(), coverFile: $('#pc').files[0] }); toast('Publicada! Já está na Comunidade.'); render(); }
+    catch (x) { er.textContent = x.message === 'big' ? 'O arquivo passa de 15 MB.' : 'Não foi possível publicar. Confira o arquivo e tente de novo.'; b.disabled = false; }
+  });
+  try {
+    const { data, error } = await sb.from('mm_published').select().order('created_at', { ascending: false }).limit(60); if (error) throw error;
+    const l = (data || []).map(pubTrack); lists.comm = l;
+    $('#cm').innerHTML = l.length ? l.map((t, i) => row(t, 'comm', i) + (t.uid === S.user.id ? `<p style="margin:-4px 0 8px 76px"><button class="link" data-delpub="${esc(t.rid)}" data-path="${esc(t.id.slice(3))}">Apagar a minha publicação</button></p>` : '')).join('') : '<p class="muted">Ainda não há músicas publicadas. Seja a primeira pessoa!</p>';
+    markCurrent();
+  } catch (x) { $('#cm').innerHTML = errBox('Não foi possível carregar a Comunidade.'); }
+}
+async function publishTrack({ file, title, artist, coverFile, duration }) {
+  if (!file || !title || !artist) throw new Error('dados');
+  if (file.size > 15 * 1048576) throw new Error('big');
+  const ext = (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp3';
+  const path = S.user.id + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + '.' + ext;
+  const up = await sb.upload('mm-tracks', path, file, (file.type || 'audio/mpeg').split(';')[0]); if (up.error) throw up.error;
+  let cover = null; if (coverFile) cover = await resizeImg(coverFile, 400, 0.8);
+  const dur = duration || await new Promise((res) => { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => res(Math.round(a.duration) || 0); a.onerror = () => res(0); a.src = URL.createObjectURL(file); });
+  const { error } = await sb.from('mm_published').insert({ title, artist, path, cover, duration: dur }); if (error) throw error;
 }
 async function vNow(v) {
   const t = curTrack();
@@ -431,11 +506,11 @@ const PUBLIC = ['/baixar', '/novidades'];
 const AUTHPAGES = ['/entrar', '/cadastro'];
 function path() { let p = location.pathname.slice(BASE.length - 1).replace(/\/+$/, ''); return p || '/'; }
 function go(p, replace) { const url = BASE + p.replace(/^\//, ''); (replace ? history.replaceState : history.pushState).call(history, {}, '', url); render(); window.scrollTo(0, 0); }
-const NAV = [['/', 'Início', 'home'], ['/buscar', 'Buscar', 'search'], ['/biblioteca', 'Biblioteca', 'lib'], ['/conexoes', 'Conexões', 'link'], ['/perfil', 'Perfil', 'user']];
+const NAV = [['/', 'Início', 'home'], ['/buscar', 'Buscar', 'search'], ['/biblioteca', 'Biblioteca', 'lib'], ['/comunidade', 'Comunidade', 'note'], ['/perfil', 'Perfil', 'user']];
 function chrome(p) {
   const on = (h) => (h === '/' ? p === '/' : p.startsWith(h));
   const links = NAV.map(([h, n, i]) => `<a class="nl ${on(h) ? 'on' : ''}" href="${BASE}${h.slice(1)}" data-go="${h}">${ic[i]}${n}</a>`).join('');
-  $('#side').innerHTML = `<div class="brand"><img src="img/logo-192.png" alt="">Master Music</div>${links}<a class="nl ${on('/baixar') ? 'on' : ''}" href="${BASE}baixar" data-go="/baixar">${ic.dl}Baixar app</a><a class="nl ${on('/novidades') ? 'on' : ''}" href="${BASE}novidades" data-go="/novidades">${ic.news}Novidades</a>`;
+  $('#side').innerHTML = `<div class="brand"><img src="img/logo-192.png" alt="">Master Music</div>${links}<a class="nl ${on('/conexoes') ? 'on' : ''}" href="${BASE}conexoes" data-go="/conexoes">${ic.link}Conexões</a><a class="nl" href="${BASE}estudio/">${ic.note}Estúdio</a><a class="nl ${on('/baixar') ? 'on' : ''}" href="${BASE}baixar" data-go="/baixar">${ic.dl}Baixar app</a><a class="nl ${on('/novidades') ? 'on' : ''}" href="${BASE}novidades" data-go="/novidades">${ic.news}Novidades</a>`;
   $('#tabs').innerHTML = NAV.map(([h, n, i]) => `<a class="${on(h) ? 'on' : ''}" href="${BASE}${h.slice(1)}" data-go="${h}">${ic[i]}${n}</a>`).join('');
 }
 async function render() {
@@ -458,6 +533,8 @@ async function render() {
   if (p === '/') return vHome(v);
   if (p === '/buscar') return vSearch(v);
   if (p === '/conexoes') return vConexoes(v);
+  if (p === '/config') return vConfig(v);
+  if (p === '/comunidade') return vCommunity(v);
   if (p === '/perfil') return vProfile(v);
   if (p === '/tocando') return vNow(v);
   if (p === '/biblioteca') return go('/biblioteca/favoritos', true);
@@ -491,6 +568,7 @@ document.addEventListener('click', async (e) => {
     else if (act === 'delpl') { if (confirm('Apagar playlist?')) { await sb.from('mm_playlists').delete().eq('id', b.dataset.id); go('/biblioteca/playlists'); } }
     return;
   }
+  const dp = e.target.closest('[data-delpub]'); if (dp) { if (confirm('Apagar sua publicação?')) { await sb.from('mm_published').delete().eq('id', dp.dataset.delpub); sb.remove('mm-tracks', dp.dataset.path); render(); } return; }
   const si = e.target.closest('[data-spi]'); if (si) { const [ty, id] = si.dataset.spi.split(':'); spiOpen(ty, id, false); return; }
   const sr = e.target.closest('[data-spirm]'); if (sr) { spiStore(spiSaved().filter((x) => x.id !== sr.dataset.spirm)); spiList(); return; }
   const sl = e.target.closest('[data-sppl]'); if (sl) { spOpen(sl.dataset.sppl); return; }
@@ -515,11 +593,11 @@ window.addEventListener('popstate', render);
 (async () => {
   const { data } = await A.getSession();
   S.user = data.session ? data.session.user : null;
-  if (S.user) loadFavs();
+  if (S.user) { loadFavs(); await loadProfile(); }
   A.onAuthStateChange((ev, session) => {
     S.user = session ? session.user : null;
     setTimeout(async () => {
-      if (S.user) loadFavs();
+      if (S.user) { loadFavs(); await loadProfile(); }
       render();
     }, 0);
   });

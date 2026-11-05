@@ -75,3 +75,5 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radiu
  #toast{bottom:calc(var(--bar) + var(--nav) + 20px)}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.lite *,.lite *::before,.lite *::after{animation:none!important;transition:none!important;backdrop-filter:none!important}
