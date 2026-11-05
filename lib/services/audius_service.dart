@@ -1,3 +1,4 @@
+import '../config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/track.dart';
@@ -7,7 +8,9 @@ class Audius {
   static const _base = 'https://api.audius.co/v1';
   static const _app = 'MasterMusic';
 
-  static String streamUrl(String id) => '$_base/tracks/$id/stream?app_name=$_app';
+  static String streamUrl(String id) => id.startsWith('mm:')
+      ? '${Config.supabaseUrl}/storage/v1/object/public/mm-tracks/${id.substring(3)}'
+      : '$_base/tracks/$id/stream?app_name=$_app';
 
   static Future<List<Track>> _list(String path, Map<String, String> q) async {
     final uri = Uri.parse('$_base$path').replace(queryParameters: {...q, 'app_name': _app});

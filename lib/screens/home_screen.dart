@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/track.dart';
 import '../services/audius_service.dart';
 import '../services/library_service.dart';
+import '../services/community_service.dart';
 import '../services/player_service.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Track>> _forYou = _recommend();
   late String _discGenreName = '';
   late Future<List<Track>> _discover = _discoverNew();
+  late Future<List<Track>> _community = Community.published();
 
   /// Músicas parecidas com o gosto da pessoa: artistas mais ouvidos/curtidos (individual).
   Future<List<Track>> _recommend() async {
@@ -84,6 +86,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Boa noite';
   }
 
+  @override
+  void initState() {
+    super.initState();
+    Community.loadProfile().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   void _setGenre(String g) {
     setState(() {
       _genre = g;
@@ -93,8 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
-    final name = email.contains('@') ? email.split('@').first : '';
+    final name = Community.shown;
     return RefreshIndicator(
       color: C.pink,
       onRefresh: () async {
@@ -103,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _recent = Library.I.history(limit: 20);
           _forYou = _recommend();
           _discover = _discoverNew();
+          _community = Community.published();
         });
         await _trending.catchError((_) => <Track>[]);
       },
@@ -230,6 +240,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             itemBuilder: (context, i) => _card(r, i),
                           ),
                         ),
+                      ]);
+                    },
+                  ),
+                  FutureBuilder<List<Track>>(
+                    future: _community,
+                    builder: (context, rs) {
+                      final r = rs.data ?? [];
+                      if (r.isEmpty) return const SizedBox.shrink();
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const SectionTitle('Comunidade • feitas no Estúdio'),
+                        for (var i = 0; i < r.length && i < 8; i++) TrackTile(list: r, index: i, animIndex: i),
                       ]);
                     },
                   ),

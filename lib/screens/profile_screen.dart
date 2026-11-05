@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/community_service.dart';
 import '../services/library_service.dart';
 import '../services/player_service.dart';
 import '../services/update_service.dart';
@@ -23,6 +24,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    Community.loadProfile().then((_) {
+      if (mounted) setState(() {});
+    });
     UpdateService.currentVersion().then((v) {
       if (mounted) setState(() => _version = v);
     });
@@ -62,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
+    final nm = Community.shown;
     return SafeArea(
       bottom: false,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 20, 16, 120), children: [
@@ -77,19 +81,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 30,
                 backgroundColor: Colors.white24,
-                child: Text(email.isEmpty ? '?' : email[0].toUpperCase(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+                child: Text(nm[0].toUpperCase(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Sua conta', style: TextStyle(color: Colors.white70)),
-                  Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                  const Text('Seu perfil', style: TextStyle(color: Colors.white70)),
+                  Text(nm, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                 ]),
               ),
             ]),
           ),
         ),
         const SizedBox(height: 22),
+        _item(Icons.edit_rounded, 'Editar nome', 'Como você aparece no app (seu e-mail fica privado)', () async {
+          final c = TextEditingController(text: Community.name ?? '');
+          final n = await showDialog<String>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Seu nome'),
+              content: TextField(controller: c, maxLength: 30, autofocus: true),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Salvar')),
+              ],
+            ),
+          );
+          if (n != null && n.isNotEmpty) {
+            await Community.saveName(n);
+            if (mounted) setState(() {});
+          }
+        }, color: C.pink),
         _item(Icons.link_rounded, 'Conexões', 'Spotify, YouTube e Google', () {
           Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen()));
         }, color: const Color(0xFF1DB954)),
