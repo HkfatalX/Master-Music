@@ -310,7 +310,7 @@ class TrackTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w600, color: active ? C.pink : C.text)),
             subtitle: Text(
-              t.duration > 0 ? '${t.artist} • ${fmtDur(t.duration)}' : t.artist,
+              '${t.artist}${t.duration > 0 ? ' • ${fmtDur(t.duration)}' : ''}${t.id.startsWith('mm:') ? ' • Comunidade' : ''}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: C.muted),

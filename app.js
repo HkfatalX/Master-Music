@@ -167,7 +167,7 @@ function renderPlayer() {
 /* ---------- views ---------- */
 const row = (t, list, i) => `<div class="row" data-play="${i}" data-list="${list}" data-id="${esc(t.id)}">
   ${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}
-  <div class="t"><b>${esc(t.title)}</b><span>${esc(t.artist)}${t.dur ? ' • ' + fmt(t.dur) : ''}</span></div>
+  <div class="t"><b>${esc(t.title)}</b><span>${esc(t.artist)}${t.dur ? ' • ' + fmt(t.dur) : ''}${String(t.id).startsWith('mm:') ? ' • Comunidade' : ''}</span></div>
   <button class="ib ${S.favs.has(t.id) ? 'on' : ''}" data-fav="${esc(t.id)}" data-act="favrow" data-i="${i}" data-list="${list}" aria-label="Favoritar">${ic.heart}</button>
   <button class="ib" data-act="addpl" data-i="${i}" data-list="${list}" aria-label="Adicionar à playlist">${ic.plus}</button></div>`;
 const card = (t, list, i) => `<div class="card" data-play="${i}" data-list="${list}">${t.art ? `<img loading="lazy" src="${esc(t.art)}" alt="">` : `<div class="ph">${ic.note}</div>`}<b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>`;

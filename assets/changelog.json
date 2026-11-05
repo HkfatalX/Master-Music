@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.5.1",
+    "date": "05/11/2026",
+    "title": "Ícones e permissões corrigidos",
+    "added": [
+      "Tela de permissões na primeira abertura (notificações, segundo plano, atualizações) e em Perfil > Permissões",
+      "Músicas da Comunidade ganham a etiqueta Comunidade (títulos iguais ficam distintos pelo artista e duração)"
+    ],
+    "improved": [],
+    "fixed": [
+      "Ícones dos 3 apps voltaram ao correto (roxo, azul e Studio)"
+    ]
+  },
+  {
     "version": "1.5.0",
     "date": "05/11/2026",
     "title": "Master Music Studio e ícones novos",

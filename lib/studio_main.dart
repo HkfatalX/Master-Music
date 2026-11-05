@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'config.dart';
+import 'permissions_gate.dart';
 import 'services/auth_service.dart' show authError;
 import 'theme.dart';
 
@@ -43,7 +44,7 @@ class StudioApp extends StatelessWidget {
         stream: _sb.auth.onAuthStateChange,
         builder: (context, snap) {
           final s = _sb.auth.currentSession;
-          return s == null ? const _Login() : const _Home();
+          return s == null ? const _Login() : const PermissionGate(studio: true, child: _Home());
         },
       ),
     );

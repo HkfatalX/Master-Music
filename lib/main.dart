@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config.dart';
+import 'permissions_gate.dart';
 import 'screens/code_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/reset_password_screen.dart';
@@ -159,6 +160,6 @@ class _AuthGateState extends State<_AuthGate> {
       return ResetPasswordScreen(onDone: () {});
     }
     if (flow.pendingEmail != null) return const CodeScreen();
-    return session == null ? const LoginScreen() : const Shell();
+    return session == null ? const LoginScreen() : const PermissionGate(child: Shell());
   }
 }

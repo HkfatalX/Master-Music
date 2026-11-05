@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'connections_screen.dart';
 import 'update_ui.dart';
+import '../permissions_gate.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -94,6 +95,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 22),
+        _item(Icons.security_rounded, 'Permissões', 'Notificações, segundo plano e atualizações', () {
+          Navigator.of(context).push(MaterialPageRoute<void>(builder: (c) => PermissionsScreen(studio: false, onDone: () => Navigator.of(c).pop())));
+        }, color: C.cyan),
         _item(Icons.edit_rounded, 'Editar nome', 'Como você aparece no app (seu e-mail fica privado)', () async {
           final c = TextEditingController(text: Community.name ?? '');
           final n = await showDialog<String>(
