@@ -1,7 +1,7 @@
 name: master_music
 description: Master Music - player de música moderno, gratuito e seguro.
 publish_to: none
-version: 1.5.1+15
+version: 1.5.2+16
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

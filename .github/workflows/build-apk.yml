@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee build.log
+          flutter build apk --release --no-shrink 2>&1 | tee build.log
 
       - name: Salvar log de erro na branch ci-logs
         if: failure()
@@ -87,7 +87,7 @@ jobs:
           grep -n applicationId android/app/build.gradle*
           cp assets/lite/logo.png assets/logo.png; cp assets/lite/logo_mark.png assets/logo_mark.png
           dart run flutter_launcher_icons -f tool/icons/lite.yaml
-          flutter build apk --release --target-platform android-arm,android-arm64 --dart-define=LITE=true 2>&1 | tee build-lite.log
+          flutter build apk --release --target-platform android-arm,android-arm64 --no-shrink --dart-define=LITE=true 2>&1 | tee build-lite.log
           cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Lite-$VERSION.apk"
 
       - name: Compilar Master Music Studio
@@ -98,7 +98,7 @@ jobs:
           sed -i 's/android:label="Master Music Lite"/android:label="Master Music Studio"/' android/app/src/main/AndroidManifest.xml
           grep -n applicationId android/app/build.gradle*
           dart run flutter_launcher_icons -f tool/icons/studio.yaml
-          flutter build apk --release --target-platform android-arm,android-arm64 --target lib/studio_main.dart 2>&1 | tee build-studio.log
+          flutter build apk --release --target-platform android-arm,android-arm64 --no-shrink --target lib/studio_main.dart 2>&1 | tee build-studio.log
           cp build/app/outputs/flutter-apk/app-release.apk "out/MasterMusic-Studio-$VERSION.apk"
 
       - uses: actions/upload-artifact@v4

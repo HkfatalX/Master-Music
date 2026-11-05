@@ -122,4 +122,9 @@ assert "signingConfigs.getByName(\"mm\")" in g or "signingConfigs.mm" in g, "sig
 g, n = re.subn(r"(defaultConfig\s*\{\n)", r"\1" + placeholder.replace("\\", "\\\\"), g, count=1)
 assert n == 1, "defaultConfig nao encontrado"
 open(gp, "w", encoding="utf-8").write(g)
+# ---------- res/raw/keep.xml: o audio_service procura os ícones dos botões (play, pause, próxima, anterior) pelo NOME;
+# sem isto o encolhedor de recursos do release apaga/renomeia os ícones e a notificação fica sem botões.
+os.makedirs(f"{APP}/src/main/res/raw", exist_ok=True)
+with open(f"{APP}/src/main/res/raw/keep.xml", "w", encoding="utf-8") as f:
+    f.write('<?xml version="1.0" encoding="utf-8"?>\n<resources xmlns:tools="http://schemas.android.com/tools"\n    tools:keep="@drawable/audio_service_*,@mipmap/ic_launcher*,@drawable/ic_launcher*"\n    tools:shrinkMode="strict" />\n'.replace('strict','safe'))
 print("Android patch OK")

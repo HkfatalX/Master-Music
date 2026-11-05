@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.5.2",
+    "date": "05/11/2026",
+    "title": "Botões da notificação",
+    "added": [],
+    "improved": [
+      "Studio: pacote refeito"
+    ],
+    "fixed": [
+      "Notificação de música volta a mostrar anterior, play/pause e próxima (o Android estava removendo os ícones dos botões no APK final)"
+    ]
+  },
+  {
     "version": "1.5.1",
     "date": "05/11/2026",
     "title": "Ícones e permissões corrigidos",
