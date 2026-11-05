@@ -1,0 +1,12 @@
+Analyzing Master-Music...                                       
+
+   info • 'anonKey' is deprecated and shouldn't be used. Use publishableKey instead. anonKey will be removed in a future major version. Try replacing the use of the deprecated member with the replacement • lib/main.dart:27:54 • deprecated_member_use
+warning • The declaration '_youtubeCard' isn't referenced. Try removing the declaration of '_youtubeCard' • lib/screens/connections_screen.dart:213:10 • unused_element
+warning • Unused import: 'package:supabase_flutter/supabase_flutter.dart'. Try removing the import directive • lib/screens/home_screen.dart:2:8 • unused_import
+warning • The declaration '_forgot' isn't referenced. Try removing the declaration of '_forgot' • lib/screens/login_screen.dart:61:16 • unused_element
+warning • Unused import: 'package:supabase_flutter/supabase_flutter.dart'. Try removing the import directive • lib/screens/profile_screen.dart:2:8 • unused_import
+   info • The import of 'package:url_launcher/url_launcher.dart' is unnecessary because all of the used elements are also provided by the import of 'package:supabase_flutter/supabase_flutter.dart'. Try removing the import directive • lib/services/auth_service.dart:6:8 • unnecessary_import
+   info • The import of 'package:url_launcher/url_launcher.dart' is unnecessary because all of the used elements are also provided by the import of 'package:supabase_flutter/supabase_flutter.dart'. Try removing the import directive • lib/services/youtube_service.dart:4:8 • unnecessary_import
+   info • 'anonKey' is deprecated and shouldn't be used. Use publishableKey instead. anonKey will be removed in a future major version. Try replacing the use of the deprecated member with the replacement • lib/studio_main.dart:16:54 • deprecated_member_use
+
+8 issues found. (ran in 7.9s)
